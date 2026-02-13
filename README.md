@@ -4,7 +4,6 @@
   Fork of a Simple external cheat for <a href="https://osu.ppy.sh/help/wiki/Game_Modes/osu!mania">osu!mania</a>.<br>
 </p>
 
-This fork is not ready yet!
 
 ![](media/showcase.png)
 
@@ -13,16 +12,16 @@ This fork is not ready yet!
 
 https://user-images.githubusercontent.com/28566392/163677800-b3087fe0-d7f7-46cd-9645-dc1f0f88ad67.mp4
 
-1. Download the latest build from the [releases tab](https://github.com/fs-c/maniac/releases). (Don't use the `-debug` version unless you are encountering issues and want debug information.) 
+1. Download the latest build from the [releases tab](https://github.com/cfm-miku-en/maniac-next/releases). (Don't use the `-debug` version unless you are encountering issues and want debug information.) 
 2. Start osu. You might get a pop-up with a title like "Windows protected your PC". This is a false positive, just click "More info" and "Run anyway".
-3. Start maniac.
+3. Start maniac-next.
 
-Maniac will now automatically play any beatmap you open in osu. __Make sure your keybinds are set to the defaults.__
+Maniac-next will now automatically play any beatmap you open in osu. __Make sure your keybinds are set to the defaults.__
 
 ## Contact
 
 The preferred ways for getting in touch with me are 
-- [opening an issue](https://github.com/fs-c/maniac/issues) on GitHub
+- [opening an issue](https://github.com/cfm-miku-en/maniac-next/issues)) on GitHub
 
 If you have encountered bugs or have a feature request, GitHub issues are usually best. For general questions or if you just want to get in touch please use Discord.
 
@@ -30,11 +29,11 @@ I'd prefer if you didn't send me emails regarding maniac, please just use one of
 
 ## Building
 
-_The following is only relevant to developers looking to build the project from source. This is not usually something done by regular users who are advised to [download the automatically built binaries](https://github.com/fs-c/maniac/releases) instead._
+_The following is only relevant to developers looking to build the project from source. This is not usually something done by regular users who are advised to [download the automatically built binaries](https://github.com/cfm-miku-en/maniac-next/releases)) instead._
 
 ```
 # Get the code
-git clone https://github.com/fs-c/maniac.git
+git clone https://github.com/cfm-miku-en/maniac-next.git
 
 # Get submodule dependencies
 git submodule init
