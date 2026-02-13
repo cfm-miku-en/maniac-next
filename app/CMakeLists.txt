@@ -5,7 +5,9 @@ FetchContent_Declare(
         GIT_TAG v3.11.2)
 FetchContent_MakeAvailable(json)
 
-add_executable(maniac-app app.cpp window.cpp
+add_executable(maniac-app 
+        app.cpp 
+        window.cpp
         dependencies/imgui/imgui.cpp
         dependencies/imgui/backends/imgui_impl_dx9.cpp
         dependencies/imgui/backends/imgui_impl_win32.cpp
@@ -13,7 +15,7 @@ add_executable(maniac-app app.cpp window.cpp
         dependencies/imgui/imgui_draw.cpp
         dependencies/imgui/imgui_tables.cpp
         dependencies/imgui/imgui_widgets.cpp
-        maniac.rc
+        maniac.rc)
 
 target_compile_features(maniac-app PRIVATE cxx_std_20)
 
