@@ -1,7 +1,7 @@
 <h2 align="center">maniac-next</h2>
 
 <p align="center">
-  Fork of a Simple external cheat for <a href="https://osu.ppy.sh/help/wiki/Game_Modes/osu!mania">osu!mania</a>.<br>
+   A maintained simple external cheat for <a href="https://osu.ppy.sh/help/wiki/Game_Modes/osu!mania">osu!mania</a>.<br>
 </p>
 
 
