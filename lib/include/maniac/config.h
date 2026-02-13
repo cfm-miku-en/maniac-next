@@ -21,6 +21,10 @@ namespace maniac {
         int humanization_type = DYNAMIC_HUMANIZATION;
 
         std::string keys = "asdfjkl;";
+
+        bool dark_mode = true;
+        float accent_color[3] = {0.4f, 0.6f, 1.0f};  
+        float bg_color[3] = {0.1f, 0.1f, 0.1f};      
     };
 }
 
