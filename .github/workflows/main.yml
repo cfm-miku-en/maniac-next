@@ -25,11 +25,13 @@ jobs:
       with:
         name: maniac-prd
         path: maniac-prd.exe
+        compression-level: 0
     - name: Upload debug build
       uses: actions/upload-artifact@v4
       with:
         name: maniac-dbg
         path: maniac-dbg.exe
+        compression-level: 0
   release:
     name: Create release and upload builds
     runs-on: ubuntu-latest
