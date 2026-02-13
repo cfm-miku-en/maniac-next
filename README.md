@@ -29,7 +29,7 @@ I'd prefer if you didn't send me emails regarding maniac, please just use one of
 
 ## Building
 
-_The following is only relevant to developers looking to build the project from source. This is not usually something done by regular users who are advised to [download the automatically built binaries](https://github.com/cfm-miku-en/maniac-next/releases)) instead._
+_The following is only relevant to developers looking to build the project from source. This is not usually something done by regular users who are advised to [download the automatically built binaries](https://github.com/cfm-miku-en/maniac-next/releases) instead._
 
 ```
 # Get the code
