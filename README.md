@@ -21,7 +21,7 @@ Maniac-next will now automatically play any beatmap you open in osu. __Make sure
 ## Contact
 
 The preferred ways for getting in touch with me are 
-- [opening an issue](https://github.com/cfm-miku-en/maniac-next/issues)) on GitHub
+- [opening an issue](https://github.com/cfm-miku-en/maniac-next/issues) on GitHub
 
 If you have encountered bugs or have a feature request, GitHub issues are usually best. For general questions or if you just want to get in touch please use Discord.
 
