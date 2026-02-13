@@ -14,7 +14,7 @@ namespace maniac {
 
         int tap_time = 20;
         bool mirror_mod = false;
-        int compensation_offset = -15;
+        int compensation_offset = -5;
         int humanization_modifier = 0;
         int randomization_mean = 0;
         int randomization_stddev = 0;
