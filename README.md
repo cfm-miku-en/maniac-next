@@ -73,6 +73,7 @@ Of course please also feel free to open an issue for any questions you may have.
 ## Thanks
 
 - n0b453c0d3r on UC, [mrflashstudio](https://github.com/mrflashstudio) and [daycheat](https://github.com/daycheat) for
+- 
   providing up-to-date signatures and offsets and helpful discussion
 - LSNM for particularly helpful suggestions and bug reports
 - [ocornut](https://github.com/ocornut) for the [imgui](https://github.com/ocornut/imgui) library 
