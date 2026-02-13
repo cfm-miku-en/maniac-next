@@ -1,10 +1,8 @@
 include(FetchContent)
-
 FetchContent_Declare(
         json
         GIT_REPOSITORY https://github.com/nlohmann/json
         GIT_TAG v3.11.2)
-
 FetchContent_MakeAvailable(json)
 
 add_executable(maniac-app app.cpp window.cpp
@@ -14,7 +12,8 @@ add_executable(maniac-app app.cpp window.cpp
         dependencies/imgui/imgui_demo.cpp
         dependencies/imgui/imgui_draw.cpp
         dependencies/imgui/imgui_tables.cpp
-        dependencies/imgui/imgui_widgets.cpp)
+        dependencies/imgui/imgui_widgets.cpp
+        maniac.rc
 
 target_compile_features(maniac-app PRIVATE cxx_std_20)
 
@@ -24,7 +23,5 @@ endif()
 
 target_include_directories(maniac-app PRIVATE dependencies)
 target_include_directories(maniac-app PRIVATE dependencies/imgui)
-
 target_link_libraries(maniac-app PRIVATE maniac d3d9.lib nlohmann_json::nlohmann_json)
-
 set_target_properties(maniac-app PROPERTIES OUTPUT_NAME "maniac")
