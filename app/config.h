@@ -28,6 +28,22 @@ void config::read_from_file(struct maniac::config &c) {
         c.humanization_modifier = data["humanization_modifier"];
         c.keys = data["keys"];
 
+        if (data.contains("dark_mode")) {
+            c.dark_mode = data["dark_mode"];
+        }
+        if (data.contains("accent_color")) {
+            auto accent = data["accent_color"];
+            c.accent_color[0] = accent[0];
+            c.accent_color[1] = accent[1];
+            c.accent_color[2] = accent[2];
+        }
+        if (data.contains("bg_color")) {
+            auto bg = data["bg_color"];
+            c.bg_color[0] = bg[0];
+            c.bg_color[1] = bg[1];
+            c.bg_color[2] = bg[2];
+        }
+
         debug("loaded config from file");
     } catch (json::parse_error &err) {
         debug("failed parsing config: '%s'", err.what());
@@ -44,7 +60,10 @@ void config::write_to_file(struct maniac::config &c) {
             {"randomization_stddev", c.randomization_stddev},
             {"humanization_type", c.humanization_type},
             {"humanization_modifier", c.humanization_modifier},
-            {"keys", c.keys}
+            {"keys", c.keys},
+            {"dark_mode", c.dark_mode},
+            {"accent_color", {c.accent_color[0], c.accent_color[1], c.accent_color[2]}},
+            {"bg_color", {c.bg_color[0], c.bg_color[1], c.bg_color[2]}}
     };
 
     std::ofstream file(file_name);
