@@ -5,7 +5,7 @@ jobs:
     name: Build for Windows
     runs-on: windows-latest
     steps:
-    - uses: microsoft/setup-msbuild@v1.0.2
+    - uses: microsoft/setup-msbuild@v2
     - uses: actions/checkout@v3
       with:
         fetch-depth: 1
