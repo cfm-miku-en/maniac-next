@@ -116,6 +116,58 @@ static void randomize_window_title(const HWND window) {
     SetWindowTextA(window, generate_random_string(16).c_str());
 }
 
+static void apply_theme(bool dark_mode, float* accent_color, float* bg_color) {
+    ImGuiStyle& style = ImGui::GetStyle();
+    
+    if (dark_mode) {
+        // Dark mode theme
+        ImGui::StyleColorsDark();
+        
+        // Custom dark theme colors
+        style.Colors[ImGuiCol_WindowBg] = ImVec4(bg_color[0], bg_color[1], bg_color[2], 1.0f);
+        style.Colors[ImGuiCol_FrameBg] = ImVec4(bg_color[0] + 0.1f, bg_color[1] + 0.1f, bg_color[2] + 0.1f, 1.0f);
+        style.Colors[ImGuiCol_FrameBgHovered] = ImVec4(bg_color[0] + 0.15f, bg_color[1] + 0.15f, bg_color[2] + 0.15f, 1.0f);
+        style.Colors[ImGuiCol_FrameBgActive] = ImVec4(bg_color[0] + 0.2f, bg_color[1] + 0.2f, bg_color[2] + 0.2f, 1.0f);
+        
+        // Accent colors
+        style.Colors[ImGuiCol_CheckMark] = ImVec4(accent_color[0], accent_color[1], accent_color[2], 1.0f);
+        style.Colors[ImGuiCol_SliderGrab] = ImVec4(accent_color[0], accent_color[1], accent_color[2], 1.0f);
+        style.Colors[ImGuiCol_SliderGrabActive] = ImVec4(accent_color[0] * 0.8f, accent_color[1] * 0.8f, accent_color[2] * 0.8f, 1.0f);
+        style.Colors[ImGuiCol_Button] = ImVec4(accent_color[0] * 0.6f, accent_color[1] * 0.6f, accent_color[2] * 0.6f, 0.4f);
+        style.Colors[ImGuiCol_ButtonHovered] = ImVec4(accent_color[0] * 0.8f, accent_color[1] * 0.8f, accent_color[2] * 0.8f, 1.0f);
+        style.Colors[ImGuiCol_ButtonActive] = ImVec4(accent_color[0], accent_color[1], accent_color[2], 1.0f);
+        style.Colors[ImGuiCol_Header] = ImVec4(accent_color[0] * 0.6f, accent_color[1] * 0.6f, accent_color[2] * 0.6f, 0.31f);
+        style.Colors[ImGuiCol_HeaderHovered] = ImVec4(accent_color[0] * 0.8f, accent_color[1] * 0.8f, accent_color[2] * 0.8f, 0.8f);
+        style.Colors[ImGuiCol_HeaderActive] = ImVec4(accent_color[0], accent_color[1], accent_color[2], 1.0f);
+        
+        // Borders and separators
+        style.Colors[ImGuiCol_Border] = ImVec4(accent_color[0] * 0.4f, accent_color[1] * 0.4f, accent_color[2] * 0.4f, 0.5f);
+        style.Colors[ImGuiCol_Separator] = ImVec4(accent_color[0] * 0.4f, accent_color[1] * 0.4f, accent_color[2] * 0.4f, 0.5f);
+        
+    } else {
+        // Light mode theme
+        ImGui::StyleColorsLight();
+        
+        // Custom light theme with accent
+        style.Colors[ImGuiCol_CheckMark] = ImVec4(accent_color[0], accent_color[1], accent_color[2], 1.0f);
+        style.Colors[ImGuiCol_SliderGrab] = ImVec4(accent_color[0], accent_color[1], accent_color[2], 1.0f);
+        style.Colors[ImGuiCol_SliderGrabActive] = ImVec4(accent_color[0] * 0.8f, accent_color[1] * 0.8f, accent_color[2] * 0.8f, 1.0f);
+        style.Colors[ImGuiCol_Button] = ImVec4(accent_color[0] * 0.6f, accent_color[1] * 0.6f, accent_color[2] * 0.6f, 0.4f);
+        style.Colors[ImGuiCol_ButtonHovered] = ImVec4(accent_color[0] * 0.8f, accent_color[1] * 0.8f, accent_color[2] * 0.8f, 1.0f);
+        style.Colors[ImGuiCol_ButtonActive] = ImVec4(accent_color[0], accent_color[1], accent_color[2], 1.0f);
+        style.Colors[ImGuiCol_Header] = ImVec4(accent_color[0] * 0.6f, accent_color[1] * 0.6f, accent_color[2] * 0.6f, 0.31f);
+        style.Colors[ImGuiCol_HeaderHovered] = ImVec4(accent_color[0] * 0.8f, accent_color[1] * 0.8f, accent_color[2] * 0.8f, 0.8f);
+        style.Colors[ImGuiCol_HeaderActive] = ImVec4(accent_color[0], accent_color[1], accent_color[2], 1.0f);
+    }
+    
+    // Style adjustments
+    style.WindowRounding = 6.0f;
+    style.FrameRounding = 4.0f;
+    style.GrabRounding = 4.0f;
+    style.WindowBorderSize = 1.0f;
+    style.FrameBorderSize = 1.0f;
+}
+
 void window::start(const std::function<void()> &body) {
     // TODO: Refactor this into something readable
 
@@ -149,9 +201,7 @@ void window::start(const std::function<void()> &body) {
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
 
     // Setup Dear ImGui style
-    //ImGui::StyleColorsDark();
-    //ImGui::StyleColorsClassic();
-    ImGui::StyleColorsLight();
+    // Theme will be applied in the main loop based on config
 
     // Setup Platform/Renderer backends
     ImGui_ImplWin32_Init(hwnd);
@@ -180,6 +230,9 @@ void window::start(const std::function<void()> &body) {
         ImGui_ImplDX9_NewFrame();
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
+
+        // Apply theme based on config
+        apply_theme(maniac::config.dark_mode, maniac::config.accent_color, maniac::config.bg_color);
 
 #ifdef IMGUI_HAS_VIEWPORT
         ImGuiViewport* viewport = ImGui::GetMainViewport();
