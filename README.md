@@ -1,4 +1,6 @@
 <h2 align="center">maniac-next</h2>
+![Windows 8.1+](https://img.shields.io/badge/Windows-8.1%2B-blue)
+![Mode - osu!mania](https://img.shields.io/badge/Mode-osu!mania-violet)
 
 <p align="center">
    A simple external cheat for <a href="https://osu.ppy.sh/help/wiki/Game_Modes/osu!mania">osu!mania</a>.<br>
