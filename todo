@@ -1,2 +1,1 @@
-fix bugs that get reported
-add features
+fix OG theme bug (this theme is NOT in one of the github releases as of now, only in github actions)
