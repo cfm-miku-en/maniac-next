@@ -10,7 +10,7 @@
    A simple external cheat for <a href="https://osu.ppy.sh/help/wiki/Game_Modes/osu!mania">osu!mania</a>.<br>
 </p>
 
-![](media/showcasev2.png)
+![](media/showcase2.png)
 
 
 ## Usage
