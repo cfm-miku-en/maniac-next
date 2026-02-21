@@ -98,6 +98,7 @@ static bool animated_slider_int(const char* label, int* v, int v_min, int v_max,
     if (fabsf(anim.display - target) < 0.5f) anim.display = target;
 
     float fraction  = (anim.display - (float)v_min) / (float)(v_max - v_min);
+    fraction        = fraction < 0.0f ? 0.0f : fraction > 1.0f ? 1.0f : fraction;
     float bar_width = ImGui::CalcItemWidth();
     float bar_h     = ImGui::GetFrameHeight();
     ImVec2 bar_pos  = ImGui::GetCursorScreenPos();
@@ -121,7 +122,30 @@ static bool animated_slider_int(const char* label, int* v, int v_min, int v_max,
             ImGui::ColorConvertFloat4ToU32(fill_col), rounding);
     }
 
-    bool changed = ImGui::SliderInt(label, v, v_min, v_max);
+    std::string hidden_label = std::string("##asi_") + label;
+    bool changed = ImGui::SliderInt(hidden_label.c_str(), v, v_min, v_max, "");
+
+    char val_buf[32];
+    snprintf(val_buf, sizeof(val_buf), "%d", *v);
+
+    ImFont* font     = ImGui::GetFont();
+    float font_size  = ImGui::GetFontSize();
+    ImVec2 text_size = font->CalcTextSizeA(font_size, FLT_MAX, 0.0f, val_buf);
+    ImVec2 text_pos  = ImVec2(
+        bar_pos.x + (bar_width - text_size.x) * 0.5f,
+        bar_pos.y + (bar_h     - text_size.y) * 0.5f
+    );
+
+    float split_x = bar_pos.x + fill_w;
+
+    dl->PushClipRect(bar_pos, ImVec2(split_x, bar_pos.y + bar_h), true);
+    dl->AddText(font, font_size, text_pos, IM_COL32(0, 0, 0, 220), val_buf);
+    dl->PopClipRect();
+
+    dl->PushClipRect(ImVec2(split_x, bar_pos.y), ImVec2(bar_pos.x + bar_width, bar_pos.y + bar_h), true);
+    dl->AddText(font, font_size, text_pos, IM_COL32(255, 255, 255, 200), val_buf);
+    dl->PopClipRect();
+
     return changed;
 }
 
