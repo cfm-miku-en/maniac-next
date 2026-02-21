@@ -6,10 +6,16 @@ jobs:
     runs-on: windows-latest
     steps:
     - uses: microsoft/setup-msbuild@v2
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         fetch-depth: 1
         submodules: true
+    - name: Pin imgui submodule to v1.92.6
+      shell: bash
+      run: |
+        cd app/dependencies/imgui
+        git fetch --tags origin
+        git checkout v1.92.6
     - name: Build debug executable
       run: |
         cmake . -G "Visual Studio 17 2022" -A Win32 -DCMAKE_SH="CMAKE_SH-NOTFOUND" -DCMAKE_BUILD_TYPE="Debug"
