@@ -22,9 +22,10 @@ namespace maniac {
 
         std::string keys = "asdfjkl;";
 
+        int theme_index = 1;
+        float accent_color[3] = {0.40f, 0.60f, 1.0f};
+
         bool dark_mode = true;
-        float accent_color[3] = {0.4f, 0.6f, 1.0f};  
-        float bg_color[3] = {0.1f, 0.1f, 0.1f};      
+        float bg_color[3] = {0.1f, 0.1f, 0.1f};
     };
 }
-
