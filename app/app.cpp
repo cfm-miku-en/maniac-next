@@ -2,7 +2,6 @@
 #include "config.h"
 #include <maniac/maniac.h>
 
-
 static void help_marker(const char* desc) {
     ImGui::TextDisabled("(?)");
     if (ImGui::IsItemHovered()) {
@@ -55,9 +54,8 @@ static bool color_swatch(const char* id, float r, float g, float b, float* accen
                    fabsf(accent[1]-g) < 0.01f &&
                    fabsf(accent[2]-b) < 0.01f);
 
-    ImVec4 col(r, g, b, 1.0f);
     if (active) ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 2.0f);
-    ImGui::PushStyleColor(ImGuiCol_Button,        col);
+    ImGui::PushStyleColor(ImGuiCol_Button,        ImVec4(r, g, b, 1.0f));
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(r*0.8f, g*0.8f, b*0.8f, 1.f));
     ImGui::PushStyleColor(ImGuiCol_ButtonActive,  ImVec4(r*0.6f, g*0.6f, b*0.6f, 1.f));
 
@@ -69,6 +67,50 @@ static bool color_swatch(const char* id, float r, float g, float b, float* accen
     return clicked;
 }
 
+struct SliderAnim {
+    float display = 0.0f;
+    bool  initialized = false;
+};
+
+static bool animated_slider_int(const char* label, int* v, int v_min, int v_max,
+                                 SliderAnim& anim, float speed = 8.0f) {
+    if (!anim.initialized) {
+        anim.display     = (float)*v;
+        anim.initialized = true;
+    }
+
+    float target = (float)*v;
+    float dt     = ImGui::GetIO().DeltaTime;
+    anim.display += (target - anim.display) * (1.0f - expf(-speed * dt));
+    if (fabsf(anim.display - target) < 0.5f) anim.display = target;
+
+    float fraction  = (anim.display - (float)v_min) / (float)(v_max - v_min);
+    float bar_width = ImGui::CalcItemWidth();
+    float bar_h     = ImGui::GetFrameHeight();
+    ImVec2 bar_pos  = ImGui::GetCursorScreenPos();
+
+    ImDrawList* dl  = ImGui::GetWindowDrawList();
+    ImGuiStyle& st  = ImGui::GetStyle();
+    float rounding  = st.FrameRounding;
+
+    ImVec4 bg_col   = ImGui::GetStyleColorVec4(ImGuiCol_FrameBg);
+    ImVec4 fill_col = ImGui::GetStyleColorVec4(ImGuiCol_SliderGrab);
+    fill_col.w      = 0.35f;
+
+    dl->AddRectFilled(bar_pos,
+        ImVec2(bar_pos.x + bar_width, bar_pos.y + bar_h),
+        ImGui::ColorConvertFloat4ToU32(bg_col), rounding);
+
+    float fill_w = bar_width * fraction;
+    if (fill_w > 0.0f) {
+        dl->AddRectFilled(bar_pos,
+            ImVec2(bar_pos.x + fill_w, bar_pos.y + bar_h),
+            ImGui::ColorConvertFloat4ToU32(fill_col), rounding);
+    }
+
+    bool changed = ImGui::SliderInt(label, v, v_min, v_max);
+    return changed;
+}
 
 static void set_priority_class(int priority) {
     const auto proc = GetCurrentProcess();
@@ -76,7 +118,6 @@ static void set_priority_class(int priority) {
     SetPriorityClass(proc, priority);
     debug("changed priority class from 0x%lx to 0x%lx", old, GetPriorityClass(proc));
 }
-
 
 int main(int, char**) {
     std::string message;
@@ -130,9 +171,13 @@ int main(int, char**) {
         }
     });
 
+    static SliderAnim anim_hmod, anim_mean, anim_stddev, anim_comp, anim_tap;
+
     window::start([&message] {
         ImGui::Begin("maniac-next", nullptr,
             ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoResize);
+
+        bool og_theme = (maniac::config.theme_index == 2);
 
         ImGui::Dummy(ImVec2(0, 2));
         ImVec4 status_col = (message == "playing")
@@ -151,21 +196,22 @@ int main(int, char**) {
             ImGui::Text("Theme");
             ImGui::SameLine();
             ImGui::SetNextItemWidth(180);
-            ImGui::Combo("##theme", &maniac::config.theme_index, "Cherry\0Moonlight\0\0");
+            ImGui::Combo("##theme", &maniac::config.theme_index, "Cherry\0Moonlight\0OG\0\0");
 
-            ImGui::Dummy(ImVec2(0, 4));
-
-            ImGui::Text("Accent");
-            ImGui::SameLine();
-            color_swatch("##pink",   1.0f, 0.40f, 0.70f, maniac::config.accent_color); ImGui::SameLine();
-            color_swatch("##blue",   0.40f, 0.60f, 1.0f, maniac::config.accent_color); ImGui::SameLine();
-            color_swatch("##green",  0.30f, 0.90f, 0.55f, maniac::config.accent_color); ImGui::SameLine();
-            color_swatch("##purple", 0.70f, 0.40f, 1.0f, maniac::config.accent_color); ImGui::SameLine();
-            color_swatch("##orange", 1.0f, 0.55f, 0.20f, maniac::config.accent_color); ImGui::SameLine();
-            ImGui::ColorEdit3("##accent_custom", maniac::config.accent_color,
-                ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
-            ImGui::SameLine();
-            ImGui::TextDisabled("custom");
+            if (!og_theme) {
+                ImGui::Dummy(ImVec2(0, 4));
+                ImGui::Text("Accent");
+                ImGui::SameLine();
+                color_swatch("##pink",   1.0f,  0.40f, 0.70f, maniac::config.accent_color); ImGui::SameLine();
+                color_swatch("##blue",   0.40f, 0.60f, 1.0f,  maniac::config.accent_color); ImGui::SameLine();
+                color_swatch("##green",  0.30f, 0.90f, 0.55f, maniac::config.accent_color); ImGui::SameLine();
+                color_swatch("##purple", 0.70f, 0.40f, 1.0f,  maniac::config.accent_color); ImGui::SameLine();
+                color_swatch("##orange", 1.0f,  0.55f, 0.20f, maniac::config.accent_color); ImGui::SameLine();
+                ImGui::ColorEdit3("##accent_custom", maniac::config.accent_color,
+                    ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
+                ImGui::SameLine();
+                ImGui::TextDisabled("custom");
+            }
 
             ImGui::Dummy(ImVec2(0, 3));
         }
@@ -175,31 +221,45 @@ int main(int, char**) {
         if (ImGui::CollapsingHeader("Humanization", ImGuiTreeNodeFlags_DefaultOpen)) {
             ImGui::Dummy(ImVec2(0, 3));
 
-            ImGui::SetNextItemWidth(180);
-            ImGui::Combo("Type##htype", &maniac::config.humanization_type, "Static\0Dynamic\0\0");
-            ImGui::SameLine();
-            help_marker("Static: density per 1s chunk. Dynamic: density 1s ahead of each hit, applied individually.");
+            if (og_theme) {
+                ImGui::Combo("Humanization Type", &maniac::config.humanization_type, "Static\0Dynamic (new)\0\0");
+                ImGui::SameLine();
+                help_marker("Static: density per 1s chunk. Dynamic: density 1s ahead of each hit, applied individually.");
+                ImGui::InputInt("Humanization", &maniac::config.humanization_modifier, 0, 1000);
+                ImGui::SameLine();
+                help_marker("Density-based hit-time offset.");
+                ImGui::Dummy(ImVec2(0, 2));
+                ImGui::Text("Adds a random hit-time offset generated using a normal\ndistribution with given mean and standard deviation.");
+                ImGui::Dummy(ImVec2(0, 2));
+                ImGui::InputInt("Randomization Mean", &maniac::config.randomization_mean);
+                ImGui::InputInt("Randomization Stddev", &maniac::config.randomization_stddev);
+            } else {
+                ImGui::SetNextItemWidth(180);
+                ImGui::Combo("Type##htype", &maniac::config.humanization_type, "Static\0Dynamic\0\0");
+                ImGui::SameLine();
+                help_marker("Static: density per 1s chunk. Dynamic: density 1s ahead of each hit, applied individually.");
 
-            ImGui::Dummy(ImVec2(0, 2));
+                ImGui::Dummy(ImVec2(0, 2));
 
-            ImGui::SetNextItemWidth(180);
-            ImGui::SliderInt("Modifier##hmod", &maniac::config.humanization_modifier, 0, 500);
-            ImGui::SameLine();
-            help_marker("Density-based hit-time offset. Higher = more human variation.");
+                ImGui::SetNextItemWidth(180);
+                animated_slider_int("Modifier##hmod", &maniac::config.humanization_modifier, 0, 500, anim_hmod);
+                ImGui::SameLine();
+                help_marker("Density-based hit-time offset. Higher = more human variation.");
 
-            ImGui::Dummy(ImVec2(0, 4));
-            ImGui::TextDisabled("Gaussian randomization");
-            ImGui::Dummy(ImVec2(0, 2));
+                ImGui::Dummy(ImVec2(0, 4));
+                ImGui::TextDisabled("Gaussian randomization");
+                ImGui::Dummy(ImVec2(0, 2));
 
-            ImGui::SetNextItemWidth(180);
-            ImGui::SliderInt("Mean##rmean", &maniac::config.randomization_mean, -50, 50);
-            ImGui::SameLine();
-            help_marker("Mean of the normal distribution used for random hit-time offset.");
+                ImGui::SetNextItemWidth(180);
+                animated_slider_int("Mean##rmean", &maniac::config.randomization_mean, -50, 50, anim_mean);
+                ImGui::SameLine();
+                help_marker("Mean of the normal distribution used for random hit-time offset.");
 
-            ImGui::SetNextItemWidth(180);
-            ImGui::SliderInt("Std Dev##rstddev", &maniac::config.randomization_stddev, 0, 100);
-            ImGui::SameLine();
-            help_marker("Standard deviation. Higher = more spread.");
+                ImGui::SetNextItemWidth(180);
+                animated_slider_int("Std Dev##rstddev", &maniac::config.randomization_stddev, 0, 100, anim_stddev);
+                ImGui::SameLine();
+                help_marker("Standard deviation. Higher = more spread.");
+            }
 
             ImGui::Dummy(ImVec2(0, 3));
         }
@@ -209,21 +269,30 @@ int main(int, char**) {
         if (ImGui::CollapsingHeader("Gameplay", ImGuiTreeNodeFlags_DefaultOpen)) {
             ImGui::Dummy(ImVec2(0, 3));
 
-            ImGui::SetNextItemWidth(180);
-            ImGui::SliderInt("Compensation (ms)##comp", &maniac::config.compensation_offset, -100, 100);
-            ImGui::SameLine();
-            help_marker("Constant offset added to all hit-times. Compensates for input latency.");
+            if (og_theme) {
+                ImGui::InputInt("Compensation", &maniac::config.compensation_offset);
+                ImGui::SameLine();
+                help_marker("Adds constant value to all hit-times to compensate for input latency.");
+                ImGui::Checkbox("Mirror Mod", &maniac::config.mirror_mod);
+                ImGui::InputInt("Tap time", &maniac::config.tap_time);
+                ImGui::SameLine();
+                help_marker("How long a key is held down for a single keypress, in milliseconds.");
+            } else {
+                ImGui::SetNextItemWidth(180);
+                animated_slider_int("Compensation (ms)##comp", &maniac::config.compensation_offset, -100, 100, anim_comp);
+                ImGui::SameLine();
+                help_marker("Constant offset added to all hit-times. Compensates for input latency.");
 
-            ImGui::Dummy(ImVec2(0, 2));
+                ImGui::Dummy(ImVec2(0, 2));
 
-            ImGui::SetNextItemWidth(180);
-            ImGui::SliderInt("Tap Time (ms)##tap", &maniac::config.tap_time, 1, 100);
-            ImGui::SameLine();
-            help_marker("How long a key is held down per keypress.");
+                ImGui::SetNextItemWidth(180);
+                animated_slider_int("Tap Time (ms)##tap", &maniac::config.tap_time, 1, 100, anim_tap);
+                ImGui::SameLine();
+                help_marker("How long a key is held down per keypress.");
 
-            ImGui::Dummy(ImVec2(0, 4));
-
-            toggle_switch("Mirror Mod", &maniac::config.mirror_mod);
+                ImGui::Dummy(ImVec2(0, 4));
+                toggle_switch("Mirror Mod", &maniac::config.mirror_mod);
+            }
 
             ImGui::Dummy(ImVec2(0, 3));
         }
@@ -231,9 +300,7 @@ int main(int, char**) {
         section_gap();
 
         ImGui::Dummy(ImVec2(0, 2));
-        ImGui::TextDisabled("  maniac-next");
-        ImGui::SameLine();
-        ImGui::TextDisabled("by miku (original by fs-c)");
+        ImGui::TextDisabled("maniac-next by miku (original by fs-c)");
 
         ImGui::End();
     });
