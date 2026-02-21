@@ -28,6 +28,9 @@ void config::read_from_file(struct maniac::config &c) {
         c.humanization_modifier = data["humanization_modifier"];
         c.keys = data["keys"];
 
+        if (data.contains("theme_index")) {
+            c.theme_index = data["theme_index"];
+        }
         if (data.contains("dark_mode")) {
             c.dark_mode = data["dark_mode"];
         }
@@ -61,6 +64,7 @@ void config::write_to_file(struct maniac::config &c) {
             {"humanization_type", c.humanization_type},
             {"humanization_modifier", c.humanization_modifier},
             {"keys", c.keys},
+            {"theme_index", c.theme_index},
             {"dark_mode", c.dark_mode},
             {"accent_color", {c.accent_color[0], c.accent_color[1], c.accent_color[2]}},
             {"bg_color", {c.bg_color[0], c.bg_color[1], c.bg_color[2]}}
