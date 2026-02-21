@@ -136,13 +136,20 @@ static bool animated_slider_int(const char* label, int* v, int v_min, int v_max,
         bar_pos.y + (bar_h     - text_size.y) * 0.5f
     );
 
-    float split_x = bar_pos.x + fill_w;
+    float grab_size  = ImGui::GetStyle().GrabMinSize;
+    float grab_x     = bar_pos.x + fraction * (bar_width - grab_size);
+    float grab_left  = grab_x;
+    float grab_right = grab_x + grab_size;
 
-    dl->PushClipRect(bar_pos, ImVec2(split_x, bar_pos.y + bar_h), true);
+    dl->PushClipRect(ImVec2(grab_left, bar_pos.y), ImVec2(grab_right, bar_pos.y + bar_h), true);
     dl->AddText(font, font_size, text_pos, IM_COL32(0, 0, 0, 220), val_buf);
     dl->PopClipRect();
 
-    dl->PushClipRect(ImVec2(split_x, bar_pos.y), ImVec2(bar_pos.x + bar_width, bar_pos.y + bar_h), true);
+    dl->PushClipRect(bar_pos, ImVec2(grab_left, bar_pos.y + bar_h), true);
+    dl->AddText(font, font_size, text_pos, IM_COL32(255, 255, 255, 200), val_buf);
+    dl->PopClipRect();
+
+    dl->PushClipRect(ImVec2(grab_right, bar_pos.y), ImVec2(bar_pos.x + bar_width, bar_pos.y + bar_h), true);
     dl->AddText(font, font_size, text_pos, IM_COL32(255, 255, 255, 200), val_buf);
     dl->PopClipRect();
 
