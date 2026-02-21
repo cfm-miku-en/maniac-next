@@ -1,5 +1,4 @@
 #include "window.h"
-
 #include "font.h"
 
 #include <d3d9.h>
@@ -8,81 +7,60 @@
 #include <imgui/backends/imgui_impl_dx9.h>
 #include <imgui/backends/imgui_impl_win32.h>
 #include <random>
-
 #include <algorithm>
 
 #include <maniac/common.h>
 #include <maniac/maniac.h>
 
-// TODO: Most of this is taken straight out of some example in the imgui repository, needs to be refactored
+static LPDIRECT3D9           g_pD3D       = NULL;
+static LPDIRECT3DDEVICE9     g_pd3dDevice = NULL;
+static D3DPRESENT_PARAMETERS g_d3dpp      = {};
 
-static LPDIRECT3D9 g_pD3D = NULL;
-static LPDIRECT3DDEVICE9 g_pd3dDevice = NULL;
-static D3DPRESENT_PARAMETERS g_d3dpp = {};
 
 bool CreateDeviceD3D(HWND hWnd) {
     if ((g_pD3D = Direct3DCreate9(D3D_SDK_VERSION)) == NULL)
         return false;
 
-    // Create the D3DDevice
     ZeroMemory(&g_d3dpp, sizeof(g_d3dpp));
-    g_d3dpp.Windowed = TRUE;
-    g_d3dpp.SwapEffect = D3DSWAPEFFECT_DISCARD;
-    g_d3dpp.BackBufferFormat = D3DFMT_UNKNOWN; // Need to use an explicit format with alpha if needing per-pixel alpha composition.
+    g_d3dpp.Windowed               = TRUE;
+    g_d3dpp.SwapEffect             = D3DSWAPEFFECT_DISCARD;
+    g_d3dpp.BackBufferFormat       = D3DFMT_UNKNOWN;
     g_d3dpp.EnableAutoDepthStencil = TRUE;
     g_d3dpp.AutoDepthStencilFormat = D3DFMT_D16;
-    g_d3dpp.PresentationInterval = D3DPRESENT_INTERVAL_ONE;           // Present with vsync
-    //g_d3dpp.PresentationInterval = D3DPRESENT_INTERVAL_IMMEDIATE;   // Present without vsync, maximum unthrottled framerate
+    g_d3dpp.PresentationInterval   = D3DPRESENT_INTERVAL_ONE;
+
     if (g_pD3D->CreateDevice(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, hWnd,
             D3DCREATE_HARDWARE_VERTEXPROCESSING, &g_d3dpp, &g_pd3dDevice) < 0)
         return false;
-
     return true;
 }
 
 void CleanupDeviceD3D() {
-    if (g_pd3dDevice) {
-        g_pd3dDevice->Release();
-        g_pd3dDevice = NULL;
-    }
-    if (g_pD3D) {
-        g_pD3D->Release();
-        g_pD3D = NULL;
-    }
+    if (g_pd3dDevice) { g_pd3dDevice->Release(); g_pd3dDevice = NULL; }
+    if (g_pD3D)       { g_pD3D->Release();       g_pD3D       = NULL; }
 }
 
 void ResetDevice() {
     ImGui_ImplDX9_InvalidateDeviceObjects();
     HRESULT hr = g_pd3dDevice->Reset(&g_d3dpp);
-    if (hr == D3DERR_INVALIDCALL)
-        IM_ASSERT(0);
+    if (hr == D3DERR_INVALIDCALL) IM_ASSERT(0);
     ImGui_ImplDX9_CreateDeviceObjects();
 }
 
-// Forward declare message handler from imgui_impl_win32.cpp
-extern IMGUI_IMPL_API LRESULT
-ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND, UINT, WPARAM, LPARAM);
 
-// Win32 message handler
-// You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
-// - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application, or clear/overwrite your copy of the mouse data.
-// - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application, or clear/overwrite your copy of the keyboard data.
-// Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
-    if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam))
-        return true;
-
+    if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam)) return true;
     switch (msg) {
         case WM_SIZE:
-            if (g_pd3dDevice != NULL && wParam != SIZE_MINIMIZED) {
-                g_d3dpp.BackBufferWidth = LOWORD(lParam);
+            if (g_pd3dDevice && wParam != SIZE_MINIMIZED) {
+                g_d3dpp.BackBufferWidth  = LOWORD(lParam);
                 g_d3dpp.BackBufferHeight = HIWORD(lParam);
                 ResetDevice();
             }
             return 0;
         case WM_SYSCOMMAND:
-            if ((wParam & 0xfff0) == SC_KEYMENU) // Disable ALT application menu
-                return 0;
+            if ((wParam & 0xfff0) == SC_KEYMENU) return 0;
             break;
         case WM_DESTROY:
             ::PostQuitMessage(0);
@@ -91,149 +69,244 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     return ::DefWindowProc(hWnd, msg, wParam, lParam);
 }
 
+
 static std::string generate_random_string(int length) {
-    std::string random_string;
+    std::string s;
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::uniform_int_distribution<> distrib(0, 61);
-
+    std::uniform_int_distribution<> d(0, 61);
     for (int i = 0; i < length; ++i) {
-        int random_index = distrib(gen);
-        char random_char;
-        if (random_index < 10) {
-            random_char = '0' + random_index;
-        } else if (random_index < 36) {
-            random_char = 'A' + (random_index - 10);
-        } else {
-            random_char = 'a' + (random_index - 36);
-        }
-        random_string += random_char;
+        int r = d(gen);
+        s += (r < 10) ? ('0' + r) : (r < 36) ? ('A' + r - 10) : ('a' + r - 36);
     }
-
-    return random_string;
+    return s;
 }
 
-static void randomize_window_title(const HWND window) {
+static void randomize_window_title(HWND window) {
     SetWindowTextA(window, generate_random_string(16).c_str());
 }
 
-static void apply_theme(bool dark_mode, float* accent_color, float* bg_color) {
-    ImGuiStyle& style = ImGui::GetStyle();
-    
-    if (dark_mode) {
-        // Dark mode theme
-        ImGui::StyleColorsDark();
-        
-        // Custom dark theme colors
-        style.Colors[ImGuiCol_WindowBg] = ImVec4(bg_color[0], bg_color[1], bg_color[2], 1.0f);
-        style.Colors[ImGuiCol_FrameBg] = ImVec4(bg_color[0] + 0.1f, bg_color[1] + 0.1f, bg_color[2] + 0.1f, 1.0f);
-        style.Colors[ImGuiCol_FrameBgHovered] = ImVec4(bg_color[0] + 0.15f, bg_color[1] + 0.15f, bg_color[2] + 0.15f, 1.0f);
-        style.Colors[ImGuiCol_FrameBgActive] = ImVec4(bg_color[0] + 0.2f, bg_color[1] + 0.2f, bg_color[2] + 0.2f, 1.0f);
-        
-        // Accent colors
-        style.Colors[ImGuiCol_CheckMark] = ImVec4(accent_color[0], accent_color[1], accent_color[2], 1.0f);
-        style.Colors[ImGuiCol_SliderGrab] = ImVec4(accent_color[0], accent_color[1], accent_color[2], 1.0f);
-        style.Colors[ImGuiCol_SliderGrabActive] = ImVec4(accent_color[0] * 0.8f, accent_color[1] * 0.8f, accent_color[2] * 0.8f, 1.0f);
-        style.Colors[ImGuiCol_Button] = ImVec4(accent_color[0] * 0.6f, accent_color[1] * 0.6f, accent_color[2] * 0.6f, 0.4f);
-        style.Colors[ImGuiCol_ButtonHovered] = ImVec4(accent_color[0] * 0.8f, accent_color[1] * 0.8f, accent_color[2] * 0.8f, 1.0f);
-        style.Colors[ImGuiCol_ButtonActive] = ImVec4(accent_color[0], accent_color[1], accent_color[2], 1.0f);
-        style.Colors[ImGuiCol_Header] = ImVec4(accent_color[0] * 0.6f, accent_color[1] * 0.6f, accent_color[2] * 0.6f, 0.31f);
-        style.Colors[ImGuiCol_HeaderHovered] = ImVec4(accent_color[0] * 0.8f, accent_color[1] * 0.8f, accent_color[2] * 0.8f, 0.8f);
-        style.Colors[ImGuiCol_HeaderActive] = ImVec4(accent_color[0], accent_color[1], accent_color[2], 1.0f);
-        
-        // Borders and separators
-        style.Colors[ImGuiCol_Border] = ImVec4(accent_color[0] * 0.4f, accent_color[1] * 0.4f, accent_color[2] * 0.4f, 0.5f);
-        style.Colors[ImGuiCol_Separator] = ImVec4(accent_color[0] * 0.4f, accent_color[1] * 0.4f, accent_color[2] * 0.4f, 0.5f);
-        
-    } else {
-        // Light mode theme
-        ImGui::StyleColorsLight();
-        
-        // Custom light theme with accent
-        style.Colors[ImGuiCol_CheckMark] = ImVec4(accent_color[0], accent_color[1], accent_color[2], 1.0f);
-        style.Colors[ImGuiCol_SliderGrab] = ImVec4(accent_color[0], accent_color[1], accent_color[2], 1.0f);
-        style.Colors[ImGuiCol_SliderGrabActive] = ImVec4(accent_color[0] * 0.8f, accent_color[1] * 0.8f, accent_color[2] * 0.8f, 1.0f);
-        style.Colors[ImGuiCol_Button] = ImVec4(accent_color[0] * 0.6f, accent_color[1] * 0.6f, accent_color[2] * 0.6f, 0.4f);
-        style.Colors[ImGuiCol_ButtonHovered] = ImVec4(accent_color[0] * 0.8f, accent_color[1] * 0.8f, accent_color[2] * 0.8f, 1.0f);
-        style.Colors[ImGuiCol_ButtonActive] = ImVec4(accent_color[0], accent_color[1], accent_color[2], 1.0f);
-        style.Colors[ImGuiCol_Header] = ImVec4(accent_color[0] * 0.6f, accent_color[1] * 0.6f, accent_color[2] * 0.6f, 0.31f);
-        style.Colors[ImGuiCol_HeaderHovered] = ImVec4(accent_color[0] * 0.8f, accent_color[1] * 0.8f, accent_color[2] * 0.8f, 0.8f);
-        style.Colors[ImGuiCol_HeaderActive] = ImVec4(accent_color[0], accent_color[1], accent_color[2], 1.0f);
-    }
-    
-    // Style adjustments
-    style.WindowRounding = 6.0f;
-    style.FrameRounding = 4.0f;
-    style.GrabRounding = 4.0f;
-    style.WindowBorderSize = 1.0f;
-    style.FrameBorderSize = 1.0f;
+
+namespace theme {
+
+static void apply_cherry(float* accent) {
+    ImGui::StyleColorsDark();
+    ImGuiStyle& s = ImGui::GetStyle();
+
+    ImVec4 bg       = ImVec4(0.10f, 0.08f, 0.10f, 1.00f);
+    ImVec4 bgMid    = ImVec4(0.17f, 0.14f, 0.17f, 1.00f);
+    ImVec4 bgHi     = ImVec4(0.22f, 0.18f, 0.22f, 1.00f);
+    ImVec4 acc      = ImVec4(accent[0], accent[1], accent[2], 1.00f);
+    ImVec4 accDim   = ImVec4(accent[0]*0.6f, accent[1]*0.6f, accent[2]*0.6f, 0.80f);
+    ImVec4 accHover = ImVec4(accent[0]*0.8f, accent[1]*0.8f, accent[2]*0.8f, 1.00f);
+
+    s.Colors[ImGuiCol_Text]                 = ImVec4(0.86f, 0.82f, 0.86f, 1.00f);
+    s.Colors[ImGuiCol_TextDisabled]         = ImVec4(0.50f, 0.45f, 0.50f, 1.00f);
+    s.Colors[ImGuiCol_WindowBg]             = bg;
+    s.Colors[ImGuiCol_ChildBg]              = bgMid;
+    s.Colors[ImGuiCol_PopupBg]              = bgMid;
+    s.Colors[ImGuiCol_Border]               = ImVec4(accent[0]*0.3f, accent[1]*0.3f, accent[2]*0.3f, 0.50f);
+    s.Colors[ImGuiCol_BorderShadow]         = ImVec4(0,0,0,0);
+    s.Colors[ImGuiCol_FrameBg]              = bgHi;
+    s.Colors[ImGuiCol_FrameBgHovered]       = ImVec4(bgHi.x+0.05f, bgHi.y+0.05f, bgHi.z+0.05f, 1.f);
+    s.Colors[ImGuiCol_FrameBgActive]        = accDim;
+    s.Colors[ImGuiCol_TitleBg]              = bg;
+    s.Colors[ImGuiCol_TitleBgActive]        = bgMid;
+    s.Colors[ImGuiCol_TitleBgCollapsed]     = bg;
+    s.Colors[ImGuiCol_ScrollbarBg]          = bg;
+    s.Colors[ImGuiCol_ScrollbarGrab]        = accDim;
+    s.Colors[ImGuiCol_ScrollbarGrabHovered] = accHover;
+    s.Colors[ImGuiCol_ScrollbarGrabActive]  = acc;
+    s.Colors[ImGuiCol_CheckMark]            = acc;
+    s.Colors[ImGuiCol_SliderGrab]           = acc;
+    s.Colors[ImGuiCol_SliderGrabActive]     = accHover;
+    s.Colors[ImGuiCol_Button]               = accDim;
+    s.Colors[ImGuiCol_ButtonHovered]        = accHover;
+    s.Colors[ImGuiCol_ButtonActive]         = acc;
+    s.Colors[ImGuiCol_Header]               = ImVec4(accent[0]*0.4f, accent[1]*0.4f, accent[2]*0.4f, 0.45f);
+    s.Colors[ImGuiCol_HeaderHovered]        = accHover;
+    s.Colors[ImGuiCol_HeaderActive]         = acc;
+    s.Colors[ImGuiCol_Separator]            = ImVec4(accent[0]*0.3f, accent[1]*0.3f, accent[2]*0.3f, 0.50f);
+    s.Colors[ImGuiCol_SeparatorHovered]     = accHover;
+    s.Colors[ImGuiCol_SeparatorActive]      = acc;
+    s.Colors[ImGuiCol_ResizeGrip]           = accDim;
+    s.Colors[ImGuiCol_ResizeGripHovered]    = accHover;
+    s.Colors[ImGuiCol_ResizeGripActive]     = acc;
+    s.Colors[ImGuiCol_Tab]                  = bgHi;
+    s.Colors[ImGuiCol_TabHovered]           = accHover;
+    s.Colors[ImGuiCol_TabSelected]          = acc;
+    s.Colors[ImGuiCol_TabDimmed]            = bgMid;
+    s.Colors[ImGuiCol_TabDimmedSelected]    = accDim;
+    s.Colors[ImGuiCol_PlotLines]            = acc;
+    s.Colors[ImGuiCol_PlotLinesHovered]     = accHover;
+    s.Colors[ImGuiCol_PlotHistogram]        = acc;
+    s.Colors[ImGuiCol_PlotHistogramHovered] = accHover;
+    s.Colors[ImGuiCol_TableHeaderBg]        = bgMid;
+
+    s.WindowRounding   = 5.0f;
+    s.ChildRounding    = 5.0f;
+    s.FrameRounding    = 4.0f;
+    s.GrabRounding     = 4.0f;
+    s.PopupRounding    = 4.0f;
+    s.ScrollbarRounding= 6.0f;
+    s.TabRounding      = 4.0f;
+    s.WindowBorderSize = 1.0f;
+    s.FrameBorderSize  = 1.0f;
+    s.WindowPadding    = ImVec2(10, 10);
+    s.FramePadding     = ImVec2(6,  4);
+    s.ItemSpacing      = ImVec2(8,  6);
+    s.ItemInnerSpacing = ImVec2(4,  4);
+    s.GrabMinSize      = 10.0f;
+    s.ScrollbarSize    = 12.0f;
 }
 
-void window::start(const std::function<void()> &body) {
-    // TODO: Refactor this into something readable
+static void apply_moonlight(float* accent) {
+    ImGui::StyleColorsDark();
+    ImGuiStyle& s = ImGui::GetStyle();
 
-    // Create application window
+    ImVec4 bg       = ImVec4(0.113f, 0.129f, 0.180f, 1.00f);
+    ImVec4 bgMid    = ImVec4(0.141f, 0.161f, 0.220f, 1.00f);
+    ImVec4 bgHi     = ImVec4(0.172f, 0.196f, 0.259f, 1.00f);
+    ImVec4 acc      = ImVec4(accent[0], accent[1], accent[2], 1.00f);
+    ImVec4 accDim   = ImVec4(accent[0]*0.55f, accent[1]*0.55f, accent[2]*0.55f, 0.85f);
+    ImVec4 accHover = ImVec4(accent[0]*0.80f, accent[1]*0.80f, accent[2]*0.80f, 1.00f);
+
+    s.Colors[ImGuiCol_Text]                 = ImVec4(0.82f, 0.85f, 0.95f, 1.00f);
+    s.Colors[ImGuiCol_TextDisabled]         = ImVec4(0.45f, 0.50f, 0.65f, 1.00f);
+    s.Colors[ImGuiCol_WindowBg]             = bg;
+    s.Colors[ImGuiCol_ChildBg]              = bgMid;
+    s.Colors[ImGuiCol_PopupBg]              = bgMid;
+    s.Colors[ImGuiCol_Border]               = ImVec4(0.20f, 0.23f, 0.35f, 0.80f);
+    s.Colors[ImGuiCol_BorderShadow]         = ImVec4(0,0,0,0);
+    s.Colors[ImGuiCol_FrameBg]              = bgHi;
+    s.Colors[ImGuiCol_FrameBgHovered]       = ImVec4(bgHi.x+0.04f, bgHi.y+0.04f, bgHi.z+0.06f, 1.f);
+    s.Colors[ImGuiCol_FrameBgActive]        = accDim;
+    s.Colors[ImGuiCol_TitleBg]              = bg;
+    s.Colors[ImGuiCol_TitleBgActive]        = bgMid;
+    s.Colors[ImGuiCol_TitleBgCollapsed]     = bg;
+    s.Colors[ImGuiCol_ScrollbarBg]          = bg;
+    s.Colors[ImGuiCol_ScrollbarGrab]        = accDim;
+    s.Colors[ImGuiCol_ScrollbarGrabHovered] = accHover;
+    s.Colors[ImGuiCol_ScrollbarGrabActive]  = acc;
+    s.Colors[ImGuiCol_CheckMark]            = acc;
+    s.Colors[ImGuiCol_SliderGrab]           = acc;
+    s.Colors[ImGuiCol_SliderGrabActive]     = accHover;
+    s.Colors[ImGuiCol_Button]               = accDim;
+    s.Colors[ImGuiCol_ButtonHovered]        = accHover;
+    s.Colors[ImGuiCol_ButtonActive]         = acc;
+    s.Colors[ImGuiCol_Header]               = ImVec4(accent[0]*0.35f, accent[1]*0.35f, accent[2]*0.35f, 0.50f);
+    s.Colors[ImGuiCol_HeaderHovered]        = accHover;
+    s.Colors[ImGuiCol_HeaderActive]         = acc;
+    s.Colors[ImGuiCol_Separator]            = ImVec4(0.20f, 0.23f, 0.35f, 1.00f);
+    s.Colors[ImGuiCol_SeparatorHovered]     = accHover;
+    s.Colors[ImGuiCol_SeparatorActive]      = acc;
+    s.Colors[ImGuiCol_ResizeGrip]           = accDim;
+    s.Colors[ImGuiCol_ResizeGripHovered]    = accHover;
+    s.Colors[ImGuiCol_ResizeGripActive]     = acc;
+    s.Colors[ImGuiCol_Tab]                  = bgHi;
+    s.Colors[ImGuiCol_TabHovered]           = accHover;
+    s.Colors[ImGuiCol_TabSelected]          = acc;
+    s.Colors[ImGuiCol_TabDimmed]            = bgMid;
+    s.Colors[ImGuiCol_TabDimmedSelected]    = accDim;
+    s.Colors[ImGuiCol_PlotLines]            = acc;
+    s.Colors[ImGuiCol_PlotLinesHovered]     = accHover;
+    s.Colors[ImGuiCol_PlotHistogram]        = acc;
+    s.Colors[ImGuiCol_PlotHistogramHovered] = accHover;
+    s.Colors[ImGuiCol_TableHeaderBg]        = bgMid;
+
+    s.WindowRounding   = 8.0f;
+    s.ChildRounding    = 6.0f;
+    s.FrameRounding    = 5.0f;
+    s.GrabRounding     = 5.0f;
+    s.PopupRounding    = 5.0f;
+    s.ScrollbarRounding= 8.0f;
+    s.TabRounding      = 5.0f;
+    s.WindowBorderSize = 1.0f;
+    s.FrameBorderSize  = 0.0f;
+    s.WindowPadding    = ImVec2(12, 12);
+    s.FramePadding     = ImVec2(8,  5);
+    s.ItemSpacing      = ImVec2(8,  7);
+    s.ItemInnerSpacing = ImVec2(5,  5);
+    s.GrabMinSize      = 10.0f;
+    s.ScrollbarSize    = 10.0f;
+}
+
+void apply(int theme_index, float* accent) {
+    switch (theme_index) {
+        case 0:  apply_cherry(accent);    break;
+        case 1:  apply_moonlight(accent); break;
+        default: apply_moonlight(accent); break;
+    }
+}
+
+} 
+
+
+void window::start(const std::function<void()>& body) {
     ImGui_ImplWin32_EnableDpiAwareness();
-    WNDCLASSEX wc = {sizeof(WNDCLASSEX), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(NULL), NULL,
-            NULL, NULL, NULL, _T("maniac"), NULL};
+
+    WNDCLASSEX wc = {
+        sizeof(WNDCLASSEX), CS_CLASSDC, WndProc, 0L, 0L,
+        GetModuleHandle(NULL), NULL, NULL, NULL, NULL, _T("maniac"), NULL
+    };
     ::RegisterClassEx(&wc);
-    HWND hwnd = ::CreateWindow(wc.lpszClassName, _T("maniac"), WS_OVERLAPPEDWINDOW, 100, 100, 550,
-            420, NULL, NULL, wc.hInstance, NULL);
+
+    HWND hwnd = ::CreateWindow(wc.lpszClassName, _T("maniac"),
+        WS_OVERLAPPEDWINDOW, 100, 100, 570, 490,
+        NULL, NULL, wc.hInstance, NULL);
 
     randomize_window_title(hwnd);
 
-    // Initialize Direct3D
     if (!CreateDeviceD3D(hwnd)) {
         CleanupDeviceD3D();
         ::UnregisterClass(wc.lpszClassName, wc.hInstance);
-
         throw std::runtime_error("could not create d3d device");
     }
 
-    // Show the window
     ::ShowWindow(hwnd, SW_SHOWDEFAULT);
     ::UpdateWindow(hwnd);
 
-    // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
-    ImGuiIO &io = ImGui::GetIO();
-    (void) io;
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 
-    // Setup Dear ImGui style
-    // Theme will be applied in the main loop based on config
+    theme::apply(maniac::config.theme_index, maniac::config.accent_color);
 
-    // Setup Platform/Renderer backends
     ImGui_ImplWin32_Init(hwnd);
     ImGui_ImplDX9_Init(g_pd3dDevice);
 
-    // Load custom font
-    ImGui::GetIO().Fonts->AddFontFromMemoryCompressedTTF(Karla_compressed_data,
-            Karla_compressed_size, 16.0f);
+    io.Fonts->AddFontFromMemoryCompressedTTF(
+        Karla_compressed_data, Karla_compressed_size, 16.0f);
+
+    int   last_theme  = maniac::config.theme_index;
+    float last_acc[3] = {
+        maniac::config.accent_color[0],
+        maniac::config.accent_color[1],
+        maniac::config.accent_color[2]
+    };
 
     bool done = false;
-
     while (!done) {
         MSG msg;
         while (::PeekMessage(&msg, NULL, 0U, 0U, PM_REMOVE)) {
             ::TranslateMessage(&msg);
             ::DispatchMessage(&msg);
-            if (msg.message == WM_QUIT) {
-                done = true;
-            }
+            if (msg.message == WM_QUIT) done = true;
         }
+        if (done) break;
 
-        if (done) {
-            break;
+        float* acc = maniac::config.accent_color;
+        bool accent_changed = (acc[0] != last_acc[0] || acc[1] != last_acc[1] || acc[2] != last_acc[2]);
+        if (maniac::config.theme_index != last_theme || accent_changed) {
+            theme::apply(maniac::config.theme_index, acc);
+            last_theme  = maniac::config.theme_index;
+            last_acc[0] = acc[0]; last_acc[1] = acc[1]; last_acc[2] = acc[2];
         }
 
         ImGui_ImplDX9_NewFrame();
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
-
-        // Apply theme based on config
-        apply_theme(maniac::config.dark_mode, maniac::config.accent_color, maniac::config.bg_color);
 
 #ifdef IMGUI_HAS_VIEWPORT
         ImGuiViewport* viewport = ImGui::GetMainViewport();
@@ -247,36 +320,33 @@ void window::start(const std::function<void()> &body) {
 
         body();
 
-	maniac::config.tap_time = max(0, maniac::config.tap_time);
-	maniac::config.humanization_modifier = max(0, maniac::config.humanization_modifier);
+        maniac::config.tap_time              = max(0, maniac::config.tap_time);
+        maniac::config.humanization_modifier = max(0, maniac::config.humanization_modifier);
 
         ImGui::EndFrame();
-        g_pd3dDevice->SetRenderState(D3DRS_ZENABLE, FALSE);
-        g_pd3dDevice->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
+
+        g_pd3dDevice->SetRenderState(D3DRS_ZENABLE,           FALSE);
+        g_pd3dDevice->SetRenderState(D3DRS_ALPHABLENDENABLE,  FALSE);
         g_pd3dDevice->SetRenderState(D3DRS_SCISSORTESTENABLE, FALSE);
-        ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
-        D3DCOLOR clear_col_dx = D3DCOLOR_RGBA((int) (clear_color.x * clear_color.w * 255.0f),
-                (int) (clear_color.y * clear_color.w * 255.0f),
-                (int) (clear_color.z * clear_color.w * 255.0f), (int) (clear_color.w * 255.0f));
-        g_pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, clear_col_dx, 1.0f, 0);
+
+        g_pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER,
+            D3DCOLOR_RGBA(0, 0, 0, 255), 1.0f, 0);
+
         if (g_pd3dDevice->BeginScene() >= 0) {
             ImGui::Render();
             ImGui_ImplDX9_RenderDrawData(ImGui::GetDrawData());
             g_pd3dDevice->EndScene();
         }
-        HRESULT result = g_pd3dDevice->Present(NULL, NULL, NULL, NULL);
 
-        // Handle loss of D3D9 device
+        HRESULT result = g_pd3dDevice->Present(NULL, NULL, NULL, NULL);
         if (result == D3DERR_DEVICELOST &&
-                g_pd3dDevice->TestCooperativeLevel() == D3DERR_DEVICENOTRESET) {
+            g_pd3dDevice->TestCooperativeLevel() == D3DERR_DEVICENOTRESET)
             ResetDevice();
-        }
     }
 
     ImGui_ImplDX9_Shutdown();
     ImGui_ImplWin32_Shutdown();
     ImGui::DestroyContext();
-
     CleanupDeviceD3D();
     ::DestroyWindow(hwnd);
     ::UnregisterClass(wc.lpszClassName, wc.hInstance);
