@@ -124,34 +124,48 @@ static bool animated_slider_int(const char* label, int* v, int v_min, int v_max,
 
     std::string hidden_label = std::string("##asi_") + label;
     bool changed = ImGui::SliderInt(hidden_label.c_str(), v, v_min, v_max, "");
+    bool editing  = ImGui::IsItemActive() && ImGui::GetIO().KeyCtrl;
 
-    char val_buf[32];
-    snprintf(val_buf, sizeof(val_buf), "%d", *v);
+    if (!editing) {
+        char val_buf[32];
+        snprintf(val_buf, sizeof(val_buf), "%d", *v);
 
-    ImFont* font     = ImGui::GetFont();
-    float font_size  = ImGui::GetFontSize();
-    ImVec2 text_size = font->CalcTextSizeA(font_size, FLT_MAX, 0.0f, val_buf);
-    ImVec2 text_pos  = ImVec2(
-        bar_pos.x + (bar_width - text_size.x) * 0.5f,
-        bar_pos.y + (bar_h     - text_size.y) * 0.5f
-    );
+        ImFont* font     = ImGui::GetFont();
+        float font_size  = ImGui::GetFontSize();
+        ImVec2 text_size = font->CalcTextSizeA(font_size, FLT_MAX, 0.0f, val_buf);
+        ImVec2 text_pos  = ImVec2(
+            bar_pos.x + (bar_width - text_size.x) * 0.5f,
+            bar_pos.y + (bar_h     - text_size.y) * 0.5f
+        );
 
-    float grab_size  = ImGui::GetStyle().GrabMinSize;
-    float grab_x     = bar_pos.x + fraction * (bar_width - grab_size);
-    float grab_left  = grab_x;
-    float grab_right = grab_x + grab_size;
+        float grab_size  = ImGui::GetStyle().GrabMinSize;
+        float grab_left  = bar_pos.x + fraction * (bar_width - grab_size);
+        float grab_right = grab_left + grab_size;
 
-    dl->PushClipRect(ImVec2(grab_left, bar_pos.y), ImVec2(grab_right, bar_pos.y + bar_h), true);
-    dl->AddText(font, font_size, text_pos, IM_COL32(0, 0, 0, 220), val_buf);
-    dl->PopClipRect();
+        dl->PushClipRect(ImVec2(grab_left, bar_pos.y), ImVec2(grab_right, bar_pos.y + bar_h), true);
+        dl->AddText(font, font_size, text_pos, IM_COL32(0, 0, 0, 220), val_buf);
+        dl->PopClipRect();
 
-    dl->PushClipRect(bar_pos, ImVec2(grab_left, bar_pos.y + bar_h), true);
-    dl->AddText(font, font_size, text_pos, IM_COL32(255, 255, 255, 200), val_buf);
-    dl->PopClipRect();
+        dl->PushClipRect(bar_pos, ImVec2(grab_left, bar_pos.y + bar_h), true);
+        dl->AddText(font, font_size, text_pos, IM_COL32(255, 255, 255, 200), val_buf);
+        dl->PopClipRect();
 
-    dl->PushClipRect(ImVec2(grab_right, bar_pos.y), ImVec2(bar_pos.x + bar_width, bar_pos.y + bar_h), true);
-    dl->AddText(font, font_size, text_pos, IM_COL32(255, 255, 255, 200), val_buf);
-    dl->PopClipRect();
+        dl->PushClipRect(ImVec2(grab_right, bar_pos.y), ImVec2(bar_pos.x + bar_width, bar_pos.y + bar_h), true);
+        dl->AddText(font, font_size, text_pos, IM_COL32(255, 255, 255, 200), val_buf);
+        dl->PopClipRect();
+    }
+
+    const char* hash = strstr(label, "##");
+    const char* display_label = hash ? label : label;
+    char label_buf[128];
+    if (hash) {
+        size_t len = (size_t)(hash - label);
+        strncpy(label_buf, label, len);
+        label_buf[len] = '\0';
+        display_label = label_buf;
+    }
+    ImGui::SameLine();
+    ImGui::Text("%s", display_label);
 
     return changed;
 }
