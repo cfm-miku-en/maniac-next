@@ -1,6 +1,8 @@
 #include "window.h"
 #include "config.h"
 #include <maniac/maniac.h>
+#include <unordered_map>
+#include <cmath>
 
 static void help_marker(const char* desc) {
     ImGui::TextDisabled("(?)");
@@ -31,13 +33,24 @@ static bool toggle_switch(const char* label, bool* v) {
     bool changed = false;
     if (ImGui::IsItemClicked()) { *v = !*v; changed = true; }
 
-    float t = *v ? 1.0f : 0.0f;
+    static std::unordered_map<std::string, float> anim_map;
+    float& t = anim_map[label];
+    float target = *v ? 1.0f : 0.0f;
+    float dt = ImGui::GetIO().DeltaTime;
+    t += (target - t) * (1.0f - expf(-12.0f * dt));
+    if (fabsf(t - target) < 0.005f) t = target;
 
-    ImU32 col_bg = *v
-        ? ImGui::ColorConvertFloat4ToU32(ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive))
-        : IM_COL32(80, 80, 80, 200);
+    ImVec4 acc = ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive);
+    ImVec4 off = ImVec4(0.31f, 0.31f, 0.31f, 0.78f);
+    ImVec4 blended = ImVec4(
+        off.x + (acc.x - off.x) * t,
+        off.y + (acc.y - off.y) * t,
+        off.z + (acc.z - off.z) * t,
+        off.w + (acc.w - off.w) * t
+    );
 
-    dl->AddRectFilled(p, ImVec2(p.x + width, p.y + height), col_bg, height * 0.5f);
+    dl->AddRectFilled(p, ImVec2(p.x + width, p.y + height),
+        ImGui::ColorConvertFloat4ToU32(blended), height * 0.5f);
     dl->AddCircleFilled(
         ImVec2(p.x + radius + t * (width - radius * 2.0f), p.y + radius),
         radius - 1.5f, IM_COL32(255, 255, 255, 255));
@@ -222,17 +235,17 @@ int main(int, char**) {
             ImGui::Dummy(ImVec2(0, 3));
 
             if (og_theme) {
-                ImGui::Combo("Humanization Type", &maniac::config.humanization_type, "Static\0Dynamic (new)\0\0");
+                ImGui::Combo("Humanization Type##og_htype", &maniac::config.humanization_type, "Static\0Dynamic (new)\0\0");
                 ImGui::SameLine();
                 help_marker("Static: density per 1s chunk. Dynamic: density 1s ahead of each hit, applied individually.");
-                ImGui::InputInt("Humanization", &maniac::config.humanization_modifier, 0, 1000);
+                ImGui::InputInt("Humanization##og_hmod", &maniac::config.humanization_modifier, 1, 10);
                 ImGui::SameLine();
                 help_marker("Density-based hit-time offset.");
                 ImGui::Dummy(ImVec2(0, 2));
                 ImGui::Text("Adds a random hit-time offset generated using a normal\ndistribution with given mean and standard deviation.");
                 ImGui::Dummy(ImVec2(0, 2));
-                ImGui::InputInt("Randomization Mean", &maniac::config.randomization_mean);
-                ImGui::InputInt("Randomization Stddev", &maniac::config.randomization_stddev);
+                ImGui::InputInt("Randomization Mean##og_rmean", &maniac::config.randomization_mean);
+                ImGui::InputInt("Randomization Stddev##og_rstddev", &maniac::config.randomization_stddev);
             } else {
                 ImGui::SetNextItemWidth(180);
                 ImGui::Combo("Type##htype", &maniac::config.humanization_type, "Static\0Dynamic\0\0");
@@ -270,11 +283,11 @@ int main(int, char**) {
             ImGui::Dummy(ImVec2(0, 3));
 
             if (og_theme) {
-                ImGui::InputInt("Compensation", &maniac::config.compensation_offset);
+                ImGui::InputInt("Compensation##og_comp", &maniac::config.compensation_offset);
                 ImGui::SameLine();
                 help_marker("Adds constant value to all hit-times to compensate for input latency.");
-                ImGui::Checkbox("Mirror Mod", &maniac::config.mirror_mod);
-                ImGui::InputInt("Tap time", &maniac::config.tap_time);
+                ImGui::Checkbox("Mirror Mod##og_mirror", &maniac::config.mirror_mod);
+                ImGui::InputInt("Tap time##og_tap", &maniac::config.tap_time);
                 ImGui::SameLine();
                 help_marker("How long a key is held down for a single keypress, in milliseconds.");
             } else {
