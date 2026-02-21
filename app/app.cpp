@@ -2,7 +2,8 @@
 #include "config.h"
 #include <maniac/maniac.h>
 
-static void help_marker(const char *desc) {
+
+static void help_marker(const char* desc) {
     ImGui::TextDisabled("(?)");
     if (ImGui::IsItemHovered()) {
         ImGui::BeginTooltip();
@@ -13,72 +14,105 @@ static void help_marker(const char *desc) {
     }
 }
 
-static void horizontal_break() {
-    ImGui::Dummy(ImVec2(0.0f, 5.0f));
-
+static void section_gap() {
+    ImGui::Dummy(ImVec2(0.0f, 4.0f));
     ImGui::Separator();
-
-    ImGui::Dummy(ImVec2(0.0f, 5.0f));
+    ImGui::Dummy(ImVec2(0.0f, 4.0f));
 }
+
+static bool toggle_switch(const char* label, bool* v) {
+    ImVec2 p = ImGui::GetCursorScreenPos();
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+
+    float height = ImGui::GetFrameHeight();
+    float width  = height * 1.75f;
+    float radius = height * 0.50f;
+
+    ImGui::InvisibleButton(label, ImVec2(width, height));
+    bool changed = false;
+    if (ImGui::IsItemClicked()) { *v = !*v; changed = true; }
+
+    float t = *v ? 1.0f : 0.0f;
+
+    ImU32 col_bg = *v
+        ? ImGui::ColorConvertFloat4ToU32(ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive))
+        : IM_COL32(80, 80, 80, 200);
+
+    dl->AddRectFilled(p, ImVec2(p.x + width, p.y + height), col_bg, height * 0.5f);
+    dl->AddCircleFilled(
+        ImVec2(p.x + radius + t * (width - radius * 2.0f), p.y + radius),
+        radius - 1.5f, IM_COL32(255, 255, 255, 255));
+
+    ImGui::SameLine();
+    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + (height - ImGui::GetTextLineHeight()) * 0.5f);
+    ImGui::Text("%s", label);
+
+    return changed;
+}
+
+static bool color_swatch(const char* id, float r, float g, float b, float* accent) {
+    bool active = (fabsf(accent[0]-r) < 0.01f &&
+                   fabsf(accent[1]-g) < 0.01f &&
+                   fabsf(accent[2]-b) < 0.01f);
+
+    ImVec4 col(r, g, b, 1.0f);
+    if (active) ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 2.0f);
+    ImGui::PushStyleColor(ImGuiCol_Button,        col);
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(r*0.8f, g*0.8f, b*0.8f, 1.f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive,  ImVec4(r*0.6f, g*0.6f, b*0.6f, 1.f));
+
+    bool clicked = ImGui::Button(id, ImVec2(22, 22));
+    ImGui::PopStyleColor(3);
+    if (active) ImGui::PopStyleVar();
+
+    if (clicked) { accent[0] = r; accent[1] = g; accent[2] = b; }
+    return clicked;
+}
+
 
 static void set_priority_class(int priority) {
     const auto proc = GetCurrentProcess();
-    const auto old_priority = GetPriorityClass(proc);
-
+    const auto old  = GetPriorityClass(proc);
     SetPriorityClass(proc, priority);
-
-    debug("changed priority class from 0x%lx to 0x%lx", old_priority,
-            GetPriorityClass(proc));
+    debug("changed priority class from 0x%lx to 0x%lx", old, GetPriorityClass(proc));
 }
 
-int main(int, char **) {
+
+int main(int, char**) {
     std::string message;
 
     config::read_from_file(maniac::config);
 
-    auto run = [&message](osu::Osu &osu) {
+    auto run = [&message](osu::Osu& osu) {
         maniac::osu = &osu;
-
         message = "waiting for beatmap...";
-
         maniac::block_until_playing();
-
         message = "found beatmap";
 
         std::vector<osu::HitObject> hit_objects;
-
         for (int i = 0; i < 10; i++) {
             try {
                 hit_objects = osu.get_hit_objects();
-
                 break;
-            } catch (std::exception &err) {
+            } catch (std::exception& err) {
                 debug("get hit objects attempt %d failed: %s", i + 1, err.what());
-
                 std::this_thread::sleep_for(std::chrono::milliseconds(200));
             }
         }
 
-        if (hit_objects.empty()) {
+        if (hit_objects.empty())
             throw std::runtime_error("failed getting hit objects");
-        }
 
         set_priority_class(HIGH_PRIORITY_CLASS);
-
         maniac::randomize(hit_objects, maniac::config.randomization_mean, maniac::config.randomization_stddev);
 
-        if (maniac::config.humanization_type == maniac::config::STATIC_HUMANIZATION) {
+        if (maniac::config.humanization_type == maniac::config::STATIC_HUMANIZATION)
             maniac::humanize_static(hit_objects, maniac::config.humanization_modifier);
-        }
-
-        if (maniac::config.humanization_type == maniac::config::DYNAMIC_HUMANIZATION) {
+        if (maniac::config.humanization_type == maniac::config::DYNAMIC_HUMANIZATION)
             maniac::humanize_dynamic(hit_objects, maniac::config.humanization_modifier);
-        }
 
         auto actions = maniac::to_actions(hit_objects, osu.get_game_time());
-
         message = "playing";
-
         maniac::play(actions);
 
         set_priority_class(NORMAL_PRIORITY_CLASS);
@@ -88,116 +122,123 @@ int main(int, char **) {
         while (!token.stop_requested()) {
             try {
                 auto osu = osu::Osu();
-
-                while (!token.stop_requested()) {
-                    run(osu);
-                }
-            } catch (std::exception &err) {
+                while (!token.stop_requested()) run(osu);
+            } catch (std::exception& err) {
                 (message = err.what()).append(" (retrying in 2 seconds)");
-
                 std::this_thread::sleep_for(std::chrono::seconds(2));
             }
         }
     });
 
     window::start([&message] {
-        ImGui::Begin("maniac-next", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoResize);
+        ImGui::Begin("maniac-next", nullptr,
+            ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoResize);
 
-        ImGui::Text("Status: %s", message.c_str());
-        horizontal_break();
+        ImGui::Dummy(ImVec2(0, 2));
+        ImVec4 status_col = (message == "playing")
+            ? ImVec4(0.4f, 1.0f, 0.5f, 1.0f)
+            : ImVec4(0.8f, 0.8f, 0.8f, 0.7f);
+        ImGui::PushStyleColor(ImGuiCol_Text, status_col);
+        ImGui::Text("  %s", message.c_str());
+        ImGui::PopStyleColor();
+        ImGui::Dummy(ImVec2(0, 2));
 
-        // Theme Settings Section
-        if (ImGui::CollapsingHeader("Theme Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
-            ImGui::Checkbox("Dark Mode", &maniac::config.dark_mode);
-            
-            ImGui::ColorEdit3("Accent Color", maniac::config.accent_color, ImGuiColorEditFlags_NoInputs);
+        section_gap();
+
+        if (ImGui::CollapsingHeader("Appearance", ImGuiTreeNodeFlags_DefaultOpen)) {
+            ImGui::Dummy(ImVec2(0, 3));
+
+            ImGui::Text("Theme");
             ImGui::SameLine();
-            help_marker("Primary accent color used throughout the UI.");
-            
-            if (maniac::config.dark_mode) {
-                ImGui::ColorEdit3("Background Color", maniac::config.bg_color, ImGuiColorEditFlags_NoInputs);
-                ImGui::SameLine();
-                help_marker("Main background color for dark mode.");
-            }
-            
-            // Preset colors
-            ImGui::Text("Presets:");
+            ImGui::SetNextItemWidth(180);
+            ImGui::Combo("##theme", &maniac::config.theme_index, "Cherry\0Moonlight\0\0");
+
+            ImGui::Dummy(ImVec2(0, 4));
+
+            ImGui::Text("Accent");
             ImGui::SameLine();
-            if (ImGui::SmallButton("Blue")) {
-                maniac::config.accent_color[0] = 0.4f;
-                maniac::config.accent_color[1] = 0.6f;
-                maniac::config.accent_color[2] = 1.0f;
-            }
+            color_swatch("##pink",   1.0f, 0.40f, 0.70f, maniac::config.accent_color); ImGui::SameLine();
+            color_swatch("##blue",   0.40f, 0.60f, 1.0f, maniac::config.accent_color); ImGui::SameLine();
+            color_swatch("##green",  0.30f, 0.90f, 0.55f, maniac::config.accent_color); ImGui::SameLine();
+            color_swatch("##purple", 0.70f, 0.40f, 1.0f, maniac::config.accent_color); ImGui::SameLine();
+            color_swatch("##orange", 1.0f, 0.55f, 0.20f, maniac::config.accent_color); ImGui::SameLine();
+            ImGui::ColorEdit3("##accent_custom", maniac::config.accent_color,
+                ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
             ImGui::SameLine();
-            if (ImGui::SmallButton("Pink")) {
-                maniac::config.accent_color[0] = 1.0f;
-                maniac::config.accent_color[1] = 0.4f;
-                maniac::config.accent_color[2] = 0.8f;
-            }
-            ImGui::SameLine();
-            if (ImGui::SmallButton("Green")) {
-                maniac::config.accent_color[0] = 0.4f;
-                maniac::config.accent_color[1] = 1.0f;
-                maniac::config.accent_color[2] = 0.6f;
-            }
-            ImGui::SameLine();
-            if (ImGui::SmallButton("Purple")) {
-                maniac::config.accent_color[0] = 0.7f;
-                maniac::config.accent_color[1] = 0.4f;
-                maniac::config.accent_color[2] = 1.0f;
-            }
-            
-            horizontal_break();
+            ImGui::TextDisabled("custom");
+
+            ImGui::Dummy(ImVec2(0, 3));
         }
 
-        // Humanization Settings Section
-        if (ImGui::CollapsingHeader("Humanization Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
-            ImGui::Combo("Humanization Type", &maniac::config.humanization_type, "Static\0Dynamic (new)\0\0");
+        section_gap();
+
+        if (ImGui::CollapsingHeader("Humanization", ImGuiTreeNodeFlags_DefaultOpen)) {
+            ImGui::Dummy(ImVec2(0, 3));
+
+            ImGui::SetNextItemWidth(180);
+            ImGui::Combo("Type##htype", &maniac::config.humanization_type, "Static\0Dynamic\0\0");
             ImGui::SameLine();
-            help_marker("Static: Density calculated per 1s chunk and applied to all hit objects in that chunk. Dynamic: Density 1s 'in front' of each hit object, applied individually.");
+            help_marker("Static: density per 1s chunk. Dynamic: density 1s ahead of each hit, applied individually.");
 
-            ImGui::InputInt("Humanization", &maniac::config.humanization_modifier, 0, 1000);
+            ImGui::Dummy(ImVec2(0, 2));
+
+            ImGui::SetNextItemWidth(180);
+            ImGui::SliderInt("Modifier##hmod", &maniac::config.humanization_modifier, 0, 500);
             ImGui::SameLine();
-            help_marker("Advanced hit-time randomization based on hit density.");
+            help_marker("Density-based hit-time offset. Higher = more human variation.");
 
-            horizontal_break();
+            ImGui::Dummy(ImVec2(0, 4));
+            ImGui::TextDisabled("Gaussian randomization");
+            ImGui::Dummy(ImVec2(0, 2));
 
-            ImGui::Text("Adds a random hit-time offset generated using a normal \ndistribution with given mean and standard deviation.");
-            ImGui::Dummy(ImVec2(0.0f, 2.0f));
+            ImGui::SetNextItemWidth(180);
+            ImGui::SliderInt("Mean##rmean", &maniac::config.randomization_mean, -50, 50);
+            ImGui::SameLine();
+            help_marker("Mean of the normal distribution used for random hit-time offset.");
 
-            ImGui::InputInt("Randomization Mean", &maniac::config.randomization_mean);
-            ImGui::InputInt("Randomization Stddev", &maniac::config.randomization_stddev);
+            ImGui::SetNextItemWidth(180);
+            ImGui::SliderInt("Std Dev##rstddev", &maniac::config.randomization_stddev, 0, 100);
+            ImGui::SameLine();
+            help_marker("Standard deviation. Higher = more spread.");
 
-            horizontal_break();
+            ImGui::Dummy(ImVec2(0, 3));
         }
 
-        // Gameplay Settings Section
-        if (ImGui::CollapsingHeader("Gameplay Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
-            ImGui::InputInt("Compensation", &maniac::config.compensation_offset);
-            ImGui::SameLine();
-            help_marker("Adds constant value to all hit-times to compensate for input latency, slower processors, etc.");
+        section_gap();
 
-            ImGui::Checkbox("Mirror Mod", &maniac::config.mirror_mod);
+        if (ImGui::CollapsingHeader("Gameplay", ImGuiTreeNodeFlags_DefaultOpen)) {
+            ImGui::Dummy(ImVec2(0, 3));
 
-            ImGui::InputInt("Tap time", &maniac::config.tap_time);
+            ImGui::SetNextItemWidth(180);
+            ImGui::SliderInt("Compensation (ms)##comp", &maniac::config.compensation_offset, -100, 100);
             ImGui::SameLine();
-            help_marker("How long a key is held down for a single keypress, in milliseconds.");
+            help_marker("Constant offset added to all hit-times. Compensates for input latency.");
+
+            ImGui::Dummy(ImVec2(0, 2));
+
+            ImGui::SetNextItemWidth(180);
+            ImGui::SliderInt("Tap Time (ms)##tap", &maniac::config.tap_time, 1, 100);
+            ImGui::SameLine();
+            help_marker("How long a key is held down per keypress.");
+
+            ImGui::Dummy(ImVec2(0, 4));
+
+            toggle_switch("Mirror Mod", &maniac::config.mirror_mod);
+
+            ImGui::Dummy(ImVec2(0, 3));
         }
 
-        horizontal_break();
-        ImGui::Dummy(ImVec2(0.0f, 5.0f));
+        section_gap();
 
-        ImGui::TextDisabled("maniac-next by miku (original by fs-c)");
+        ImGui::Dummy(ImVec2(0, 2));
+        ImGui::TextDisabled("  maniac-next");
         ImGui::SameLine();
-        help_marker("https://github.com/fs-c/maniac");
+        ImGui::TextDisabled("by miku (original by fs-c)");
 
         ImGui::End();
     });
 
     config::write_to_file(maniac::config);
-
     thread.request_stop();
-
     return EXIT_SUCCESS;
 }
-
