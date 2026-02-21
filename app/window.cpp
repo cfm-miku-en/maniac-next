@@ -16,7 +16,6 @@ static LPDIRECT3D9           g_pD3D       = NULL;
 static LPDIRECT3DDEVICE9     g_pd3dDevice = NULL;
 static D3DPRESENT_PARAMETERS g_d3dpp      = {};
 
-
 bool CreateDeviceD3D(HWND hWnd) {
     if ((g_pD3D = Direct3DCreate9(D3D_SDK_VERSION)) == NULL)
         return false;
@@ -69,7 +68,6 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     return ::DefWindowProc(hWnd, msg, wParam, lParam);
 }
 
-
 static std::string generate_random_string(int length) {
     std::string s;
     std::random_device rd;
@@ -85,7 +83,6 @@ static std::string generate_random_string(int length) {
 static void randomize_window_title(HWND window) {
     SetWindowTextA(window, generate_random_string(16).c_str());
 }
-
 
 namespace theme {
 
@@ -143,21 +140,21 @@ static void apply_cherry(float* accent) {
     s.Colors[ImGuiCol_PlotHistogramHovered] = accHover;
     s.Colors[ImGuiCol_TableHeaderBg]        = bgMid;
 
-    s.WindowRounding   = 5.0f;
-    s.ChildRounding    = 5.0f;
-    s.FrameRounding    = 4.0f;
-    s.GrabRounding     = 4.0f;
-    s.PopupRounding    = 4.0f;
-    s.ScrollbarRounding= 6.0f;
-    s.TabRounding      = 4.0f;
-    s.WindowBorderSize = 1.0f;
-    s.FrameBorderSize  = 1.0f;
-    s.WindowPadding    = ImVec2(10, 10);
-    s.FramePadding     = ImVec2(6,  4);
-    s.ItemSpacing      = ImVec2(8,  6);
-    s.ItemInnerSpacing = ImVec2(4,  4);
-    s.GrabMinSize      = 10.0f;
-    s.ScrollbarSize    = 12.0f;
+    s.WindowRounding    = 5.0f;
+    s.ChildRounding     = 5.0f;
+    s.FrameRounding     = 4.0f;
+    s.GrabRounding      = 4.0f;
+    s.PopupRounding     = 4.0f;
+    s.ScrollbarRounding = 6.0f;
+    s.TabRounding       = 4.0f;
+    s.WindowBorderSize  = 1.0f;
+    s.FrameBorderSize   = 1.0f;
+    s.WindowPadding     = ImVec2(10, 10);
+    s.FramePadding      = ImVec2(6,  4);
+    s.ItemSpacing       = ImVec2(8,  6);
+    s.ItemInnerSpacing  = ImVec2(4,  4);
+    s.GrabMinSize       = 10.0f;
+    s.ScrollbarSize     = 12.0f;
 }
 
 static void apply_moonlight(float* accent) {
@@ -214,33 +211,63 @@ static void apply_moonlight(float* accent) {
     s.Colors[ImGuiCol_PlotHistogramHovered] = accHover;
     s.Colors[ImGuiCol_TableHeaderBg]        = bgMid;
 
-    s.WindowRounding   = 8.0f;
-    s.ChildRounding    = 6.0f;
-    s.FrameRounding    = 5.0f;
-    s.GrabRounding     = 5.0f;
-    s.PopupRounding    = 5.0f;
-    s.ScrollbarRounding= 8.0f;
-    s.TabRounding      = 5.0f;
-    s.WindowBorderSize = 1.0f;
-    s.FrameBorderSize  = 0.0f;
-    s.WindowPadding    = ImVec2(12, 12);
-    s.FramePadding     = ImVec2(8,  5);
-    s.ItemSpacing      = ImVec2(8,  7);
-    s.ItemInnerSpacing = ImVec2(5,  5);
-    s.GrabMinSize      = 10.0f;
-    s.ScrollbarSize    = 10.0f;
+    s.WindowRounding    = 8.0f;
+    s.ChildRounding     = 6.0f;
+    s.FrameRounding     = 5.0f;
+    s.GrabRounding      = 5.0f;
+    s.PopupRounding     = 5.0f;
+    s.ScrollbarRounding = 8.0f;
+    s.TabRounding       = 5.0f;
+    s.WindowBorderSize  = 1.0f;
+    s.FrameBorderSize   = 0.0f;
+    s.WindowPadding     = ImVec2(12, 12);
+    s.FramePadding      = ImVec2(8,  5);
+    s.ItemSpacing       = ImVec2(8,  7);
+    s.ItemInnerSpacing  = ImVec2(5,  5);
+    s.GrabMinSize       = 10.0f;
+    s.ScrollbarSize     = 10.0f;
+}
+
+static void apply_og(float* accent) {
+    ImGui::StyleColorsDark();
+    ImGuiStyle& s = ImGui::GetStyle();
+
+    ImVec4 acc      = ImVec4(accent[0], accent[1], accent[2], 1.00f);
+    ImVec4 accDim   = ImVec4(accent[0]*0.6f, accent[1]*0.6f, accent[2]*0.6f, 0.40f);
+    ImVec4 accHover = ImVec4(accent[0]*0.8f, accent[1]*0.8f, accent[2]*0.8f, 1.00f);
+
+    s.Colors[ImGuiCol_CheckMark]            = acc;
+    s.Colors[ImGuiCol_SliderGrab]           = acc;
+    s.Colors[ImGuiCol_SliderGrabActive]     = accHover;
+    s.Colors[ImGuiCol_Button]               = accDim;
+    s.Colors[ImGuiCol_ButtonHovered]        = accHover;
+    s.Colors[ImGuiCol_ButtonActive]         = acc;
+    s.Colors[ImGuiCol_Header]               = ImVec4(accent[0]*0.6f, accent[1]*0.6f, accent[2]*0.6f, 0.31f);
+    s.Colors[ImGuiCol_HeaderHovered]        = accHover;
+    s.Colors[ImGuiCol_HeaderActive]         = acc;
+    s.Colors[ImGuiCol_Border]               = ImVec4(accent[0]*0.4f, accent[1]*0.4f, accent[2]*0.4f, 0.50f);
+    s.Colors[ImGuiCol_Separator]            = ImVec4(accent[0]*0.4f, accent[1]*0.4f, accent[2]*0.4f, 0.50f);
+
+    s.WindowRounding    = 6.0f;
+    s.FrameRounding     = 4.0f;
+    s.GrabRounding      = 4.0f;
+    s.WindowBorderSize  = 1.0f;
+    s.FrameBorderSize   = 1.0f;
+    s.WindowPadding     = ImVec2(8, 8);
+    s.FramePadding      = ImVec2(4, 3);
+    s.ItemSpacing       = ImVec2(8, 4);
 }
 
 void apply(int theme_index, float* accent) {
     switch (theme_index) {
         case 0:  apply_cherry(accent);    break;
         case 1:  apply_moonlight(accent); break;
+        case 2:  apply_og(accent);        break;
         default: apply_moonlight(accent); break;
     }
 }
 
-} 
-
+} // namespace theme
 
 void window::start(const std::function<void()>& body) {
     ImGui_ImplWin32_EnableDpiAwareness();
