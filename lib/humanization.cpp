@@ -12,7 +12,6 @@ void maniac::randomize(std::vector<osu::HitObject> &hit_objects, int mean, int s
 	std::normal_distribution<> distr{static_cast<double>(mean), static_cast<double>(stddev)};
 
 	for (auto &hit_object : hit_objects) {
-        // if it's a slider we want to randomize start and end, if it's not we ignore end anyway
         hit_object.start_time += std::round(distr(gen));
         hit_object.end_time += std::round(distr(gen));
 	}
@@ -28,7 +27,6 @@ void maniac::humanize_static(std::vector<osu::HitObject> &hit_objects, int modif
 
 	const auto actual_modifier = static_cast<double>(modifier) / 100.0;
 
-    // count number of hits/unit of time (slice size)
 	constexpr auto slice_size = 1000;
 
     const auto latest_hit = std::max_element(hit_objects.begin(), hit_objects.end(), [](auto a, auto b) {
@@ -103,4 +101,28 @@ void maniac::humanize_dynamic(std::vector<osu::HitObject> &hit_objects, int modi
     }
 
     debug("dynamically humanized %d hit objects with modifier %d", hit_objects.size(), modifier);
+}
+
+
+void maniac::humanize_ur(std::vector<osu::HitObject> &hit_objects, int ur_target_x10) {
+    if (hit_objects.empty() || ur_target_x10 <= 0)
+        return;
+
+    const double stddev_ms = static_cast<double>(ur_target_x10) / 10.0;
+
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::normal_distribution<> distr(0.0, stddev_ms);
+
+    for (auto &hit_object : hit_objects) {
+        int offset = static_cast<int>(std::round(distr(gen)));
+        hit_object.start_time += offset;
+        if (hit_object.is_slider) {
+            int end_offset = static_cast<int>(std::round(distr(gen)));
+            hit_object.end_time += end_offset;
+        }
+    }
+
+    debug("UR-humanized %d hit objects targeting UR %.1f (stddev %.2fms)",
+          hit_objects.size(), ur_target_x10 / 10.0, stddev_ms);
 }
