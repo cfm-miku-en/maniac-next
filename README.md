@@ -1,6 +1,6 @@
 <h2 align="center">maniac-next</h2>
 
-![Mode - osu!mania](https://img.shields.io/badge/Mode-osu!mania-violet) ![Windows 8.1+](https://img.shields.io/badge/Windows-8.1%2B-blue)
+![Mode - osu!mania](https://img.shields.io/badge/Mode-osu!mania-violet) ![Windows 8.1+](https://img.shields.io/badge/Windows-8.1%2B-blue) osu!stable only
 
 <p align="center">
   <img src="https://i.ibb.co/CpxdC8Rn/maniac.png" alt="Maniac Image" width="400">
