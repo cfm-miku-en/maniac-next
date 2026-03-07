@@ -27,19 +27,17 @@ static NOTIFYICONDATA        g_nid        = {};
 static bool                  g_in_tray    = false;
 static bool                  g_tray_first_hide = true;
 
-static bool                  g_show_tray_popup      = false;
 static bool                  g_show_detach_popup    = false;
 static bool                  g_request_quit         = false;
 
 static void tray_add(HWND hwnd) {
+    ZeroMemory(&g_nid, sizeof(g_nid));
     g_nid.cbSize           = sizeof(NOTIFYICONDATA);
     g_nid.hWnd             = hwnd;
-    g_nid.uID              = IDI_TRAY_ICON;
+    g_nid.uID              = 1;
     g_nid.uFlags           = NIF_ICON | NIF_MESSAGE | NIF_TIP;
     g_nid.uCallbackMessage = WM_TRAY_ICON;
-    g_nid.hIcon            = (HICON)LoadImage(GetModuleHandle(NULL),
-                                 MAKEINTRESOURCE(1),
-                                 IMAGE_ICON, 16, 16, LR_DEFAULTCOLOR);
+    g_nid.hIcon            = LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(1));
     if (!g_nid.hIcon)
         g_nid.hIcon = LoadIcon(NULL, IDI_APPLICATION);
     lstrcpy(g_nid.szTip, _T("maniac-next"));
@@ -112,7 +110,13 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             g_in_tray = true;
             if (g_tray_first_hide) {
                 g_tray_first_hide = false;
-                g_show_tray_popup = true;
+                g_nid.uFlags |= NIF_INFO;
+                lstrcpy(g_nid.szInfoTitle, _T("maniac-next"));
+                lstrcpy(g_nid.szInfo, _T("Maniac will be in the tray."));
+                g_nid.dwInfoFlags = NIIF_INFO;
+                g_nid.uTimeout    = 3000;
+                Shell_NotifyIcon(NIM_MODIFY, &g_nid);
+                g_nid.uFlags &= ~NIF_INFO;
             }
             return 0;
         case WM_TRAY_ICON:
@@ -131,6 +135,9 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                 g_in_tray = false;
             } else if (LOWORD(wParam) == ID_TRAY_CLOSE) {
                 if (maniac::osu != nullptr) {
+                    ::ShowWindow(hWnd, SW_SHOW);
+                    ::SetForegroundWindow(hWnd);
+                    g_in_tray = false;
                     g_show_detach_popup = true;
                 } else {
                     g_request_quit = true;
@@ -407,6 +414,7 @@ void window::start(const std::function<void()>& body) {
         if (done) break;
 
         if (g_in_tray) {
+            if (g_request_quit) { done = true; break; }
             Sleep(50);
             continue;
         }
@@ -439,26 +447,6 @@ void window::start(const std::function<void()>& body) {
         maniac::config.humanization_modifier = max(0, maniac::config.humanization_modifier);
 
         ImVec2 center = ImGui::GetMainViewport()->GetCenter();
-
-        if (g_show_tray_popup) {
-            ImGui::OpenPopup("##tray_notice");
-            g_show_tray_popup = false;
-        }
-        ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-        ImGui::SetNextWindowSize(ImVec2(300, 0), ImGuiCond_Always);
-        if (ImGui::BeginPopupModal("##tray_notice", nullptr,
-                ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize)) {
-            ImGui::Dummy(ImVec2(0, 4));
-            ImGui::SetCursorPosX((ImGui::GetContentRegionAvail().x - ImGui::CalcTextSize("Maniac will be in the tray.").x) * 0.5f + ImGui::GetStyle().WindowPadding.x);
-            ImGui::Text("Maniac will be in the tray.");
-            ImGui::Dummy(ImVec2(0, 8));
-            float bw = 80;
-            ImGui::SetCursorPosX((ImGui::GetContentRegionAvail().x - bw) * 0.5f + ImGui::GetStyle().WindowPadding.x);
-            if (ImGui::Button("OK", ImVec2(bw, 0)))
-                ImGui::CloseCurrentPopup();
-            ImGui::Dummy(ImVec2(0, 4));
-            ImGui::EndPopup();
-        }
 
         if (g_show_detach_popup) {
             ImGui::OpenPopup("##detach_confirm");
