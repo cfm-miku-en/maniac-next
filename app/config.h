@@ -28,6 +28,12 @@ void config::read_from_file(struct maniac::config &c) {
         c.humanization_modifier = data["humanization_modifier"];
         c.keys = data["keys"];
 
+        if (data.contains("ur_target")) {
+            c.ur_target = data["ur_target"];
+        }
+        if (data.contains("show_tutorial")) {
+            c.show_tutorial = data["show_tutorial"];
+        }
         if (data.contains("theme_index")) {
             c.theme_index = data["theme_index"];
         }
@@ -63,6 +69,8 @@ void config::write_to_file(struct maniac::config &c) {
             {"randomization_stddev", c.randomization_stddev},
             {"humanization_type", c.humanization_type},
             {"humanization_modifier", c.humanization_modifier},
+            {"ur_target", c.ur_target},
+            {"show_tutorial", c.show_tutorial},
             {"keys", c.keys},
             {"theme_index", c.theme_index},
             {"dark_mode", c.dark_mode},
