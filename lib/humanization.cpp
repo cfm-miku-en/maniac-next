@@ -103,7 +103,6 @@ void maniac::humanize_dynamic(std::vector<osu::HitObject> &hit_objects, int modi
     debug("dynamically humanized %d hit objects with modifier %d", hit_objects.size(), modifier);
 }
 
-
 void maniac::humanize_ur(std::vector<osu::HitObject> &hit_objects, int ur_target_x10) {
     if (hit_objects.empty() || ur_target_x10 <= 0)
         return;
@@ -124,5 +123,31 @@ void maniac::humanize_ur(std::vector<osu::HitObject> &hit_objects, int ur_target
     }
 
     debug("UR-humanized %d hit objects targeting UR %.1f (stddev %.2fms)",
+          hit_objects.size(), ur_target_x10 / 10.0, stddev_ms);
+}
+
+void maniac::humanize_ur_static(std::vector<osu::HitObject> &hit_objects, int ur_target_x10) {
+    if (hit_objects.empty() || ur_target_x10 <= 0)
+        return;
+
+    const double stddev_ms = static_cast<double>(ur_target_x10) / 10.0;
+
+    uint32_t seed = 0;
+    for (const auto &h : hit_objects)
+        seed ^= static_cast<uint32_t>(h.start_time) * 2654435761u;
+
+    std::mt19937 gen(seed);
+    std::normal_distribution<> distr(0.0, stddev_ms);
+
+    for (auto &hit_object : hit_objects) {
+        int offset = static_cast<int>(std::round(distr(gen)));
+        hit_object.start_time += offset;
+        if (hit_object.is_slider) {
+            int end_offset = static_cast<int>(std::round(distr(gen)));
+            hit_object.end_time += end_offset;
+        }
+    }
+
+    debug("UR-humanized (static) %d hit objects targeting UR %.1f (stddev %.2fms)",
           hit_objects.size(), ur_target_x10 / 10.0, stddev_ms);
 }
