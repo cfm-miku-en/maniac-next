@@ -11,6 +11,7 @@ namespace maniac {
 
         static constexpr auto STATIC_HUMANIZATION = 0;
         static constexpr auto DYNAMIC_HUMANIZATION = 1;
+        static constexpr auto UR_HUMANIZATION = 2;
 
         int tap_time = 20;
         bool mirror_mod = false;
@@ -19,6 +20,10 @@ namespace maniac {
         int randomization_mean = 0;
         int randomization_stddev = 0;
         int humanization_type = DYNAMIC_HUMANIZATION;
+
+        int ur_target = 120;
+
+        bool show_tutorial = true;
 
         std::string keys = "asdfjkl;";
 
