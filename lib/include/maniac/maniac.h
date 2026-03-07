@@ -46,6 +46,7 @@ namespace maniac {
     void humanize_static(std::vector<osu::HitObject> &hit_objects, int modifier);
     void humanize_dynamic(std::vector<osu::HitObject> &hit_objects, int modifier);
     void humanize_ur(std::vector<osu::HitObject> &hit_objects, int ur_target_x10);
+    void humanize_ur_static(std::vector<osu::HitObject> &hit_objects, int ur_target_x10);
 
 	std::vector<Action> to_actions(std::vector<osu::HitObject> &hit_objects, int32_t min_time);
 }
