@@ -14,7 +14,8 @@
 #include <maniac/maniac.h>
 
 #define WM_TRAY_ICON     (WM_USER + 1)
-#define IDI_TRAY_ICON    1
+#define IDI_ICON1        1
+#define IDI_TRAY_ICON    IDI_ICON1
 #define ID_TRAY_OPEN     1001
 #define ID_TRAY_CLOSE    1002
 
@@ -37,7 +38,7 @@ static void tray_add(HWND hwnd) {
     g_nid.uFlags           = NIF_ICON | NIF_MESSAGE | NIF_TIP;
     g_nid.uCallbackMessage = WM_TRAY_ICON;
     g_nid.hIcon            = (HICON)LoadImage(GetModuleHandle(NULL),
-                                 MAKEINTRESOURCE(IDI_TRAY_ICON),
+                                 MAKEINTRESOURCE(1),
                                  IMAGE_ICON, 16, 16, LR_DEFAULTCOLOR);
     if (!g_nid.hIcon)
         g_nid.hIcon = LoadIcon(NULL, IDI_APPLICATION);
