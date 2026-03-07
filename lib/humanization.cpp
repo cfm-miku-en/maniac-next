@@ -107,47 +107,63 @@ void maniac::humanize_ur(std::vector<osu::HitObject> &hit_objects, int ur_target
     if (hit_objects.empty() || ur_target_x10 <= 0)
         return;
 
-    const double stddev_ms = static_cast<double>(ur_target_x10) / 10.0;
+    const double target_stddev = static_cast<double>(ur_target_x10) / 10.0;
 
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::normal_distribution<> distr(0.0, stddev_ms);
+    std::normal_distribution<> distr(0.0, 1.0);
 
-    for (auto &hit_object : hit_objects) {
-        int offset = static_cast<int>(std::round(distr(gen)));
-        hit_object.start_time += offset;
-        if (hit_object.is_slider) {
-            int end_offset = static_cast<int>(std::round(distr(gen)));
-            hit_object.end_time += end_offset;
-        }
+    std::vector<double> offsets(hit_objects.size());
+    for (auto &o : offsets) o = distr(gen);
+
+    double mean = 0.0;
+    for (auto v : offsets) mean += v;
+    mean /= offsets.size();
+
+    double variance = 0.0;
+    for (auto v : offsets) variance += (v - mean) * (v - mean);
+    double actual_stddev = std::sqrt(variance / offsets.size());
+    double scale = (actual_stddev > 0.0) ? (target_stddev / actual_stddev) : 1.0;
+
+    for (size_t i = 0; i < hit_objects.size(); i++) {
+        hit_objects[i].start_time += static_cast<int>(std::round((offsets[i] - mean) * scale));
+        if (hit_objects[i].is_slider)
+            hit_objects[i].end_time += static_cast<int>(std::round((distr(gen) - mean) * scale));
     }
 
-    debug("UR-humanized %d hit objects targeting UR %.1f (stddev %.2fms)",
-          hit_objects.size(), ur_target_x10 / 10.0, stddev_ms);
+    debug("UR-humanized (varies) %d hit objects targeting UR %.1f", hit_objects.size(), ur_target_x10 / 10.0);
 }
 
 void maniac::humanize_ur_static(std::vector<osu::HitObject> &hit_objects, int ur_target_x10) {
     if (hit_objects.empty() || ur_target_x10 <= 0)
         return;
 
-    const double stddev_ms = static_cast<double>(ur_target_x10) / 10.0;
+    const double target_stddev = static_cast<double>(ur_target_x10) / 10.0;
 
     uint32_t seed = 0;
     for (const auto &h : hit_objects)
         seed ^= static_cast<uint32_t>(h.start_time) * 2654435761u;
 
     std::mt19937 gen(seed);
-    std::normal_distribution<> distr(0.0, stddev_ms);
+    std::normal_distribution<> distr(0.0, 1.0);
 
-    for (auto &hit_object : hit_objects) {
-        int offset = static_cast<int>(std::round(distr(gen)));
-        hit_object.start_time += offset;
-        if (hit_object.is_slider) {
-            int end_offset = static_cast<int>(std::round(distr(gen)));
-            hit_object.end_time += end_offset;
-        }
+    std::vector<double> offsets(hit_objects.size());
+    for (auto &o : offsets) o = distr(gen);
+
+    double mean = 0.0;
+    for (auto v : offsets) mean += v;
+    mean /= offsets.size();
+
+    double variance = 0.0;
+    for (auto v : offsets) variance += (v - mean) * (v - mean);
+    double actual_stddev = std::sqrt(variance / offsets.size());
+    double scale = (actual_stddev > 0.0) ? (target_stddev / actual_stddev) : 1.0;
+
+    for (size_t i = 0; i < hit_objects.size(); i++) {
+        hit_objects[i].start_time += static_cast<int>(std::round((offsets[i] - mean) * scale));
+        if (hit_objects[i].is_slider)
+            hit_objects[i].end_time += static_cast<int>(std::round((distr(gen) - mean) * scale));
     }
 
-    debug("UR-humanized (static) %d hit objects targeting UR %.1f (stddev %.2fms)",
-          hit_objects.size(), ur_target_x10 / 10.0, stddev_ms);
+    debug("UR-humanized (static) %d hit objects targeting UR %.1f", hit_objects.size(), ur_target_x10 / 10.0);
 }
