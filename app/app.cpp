@@ -209,6 +209,8 @@ int main(int, char**) {
             maniac::humanize_static(hit_objects, maniac::config.humanization_modifier);
         if (maniac::config.humanization_type == maniac::config::DYNAMIC_HUMANIZATION)
             maniac::humanize_dynamic(hit_objects, maniac::config.humanization_modifier);
+        if (maniac::config.humanization_type == maniac::config::UR_HUMANIZATION)
+            maniac::humanize_ur(hit_objects, maniac::config.ur_target);
 
         auto actions = maniac::to_actions(hit_objects, osu.get_game_time());
         message = "playing";
@@ -229,13 +231,136 @@ int main(int, char**) {
         }
     });
 
-    static SliderAnim anim_hmod, anim_mean, anim_stddev, anim_comp, anim_tap;
+    static SliderAnim anim_hmod, anim_mean, anim_stddev, anim_comp, anim_tap, anim_ur;
+
+    static bool show_settings  = false;
+    static bool show_tutorial  = false;
+
+    static bool tutorial_init = false;
+    if (!tutorial_init) {
+        tutorial_init = true;
+        if (maniac::config.show_tutorial) {
+            show_tutorial = true;
+            maniac::config.show_tutorial = false; 
+        }
+    }
 
     window::start([&message] {
         ImGui::Begin("maniac-next", nullptr,
             ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoResize);
 
         bool og_theme = (maniac::config.theme_index == 2);
+
+        if (show_tutorial) {
+            ImGui::OpenPopup("##tutorial_popup");
+        }
+
+        ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+        ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+        ImGui::SetNextWindowSize(ImVec2(400, 0), ImGuiCond_Always);
+        if (ImGui::BeginPopupModal("##tutorial_popup", nullptr,
+                ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize)) {
+
+            ImGui::Dummy(ImVec2(0, 4));
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.95f, 0.95f, 0.95f, 1.0f));
+            float cw = ImGui::GetContentRegionAvail().x;
+            ImVec2 title_sz = ImGui::CalcTextSize("Welcome to maniac-next!");
+            ImGui::SetCursorPosX((cw - title_sz.x) * 0.5f + ImGui::GetStyle().WindowPadding.x);
+            ImGui::Text("Welcome to maniac-next!");
+            ImGui::PopStyleColor();
+            ImGui::Dummy(ImVec2(0, 6));
+
+            ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + 380);
+            ImGui::TextDisabled("Here is how to get started:");
+            ImGui::Dummy(ImVec2(0, 4));
+
+            ImGui::BulletText("Open osu!stable.");
+            ImGui::BulletText("Set it to windowed with a resolution\n lower than your monitor.");
+            ImGui::BulletText("Configure the settings of maniac.");
+            ImGui::BulletText("Play a map!");
+            ImGui::Dummy(ImVec2(0, 6));
+            ImGui::TextDisabled("To see this tutorial again, go to the\nsettings (top right) and click \"Tutorial\".");
+            ImGui::PopTextWrapPos();
+
+            ImGui::Dummy(ImVec2(0, 8));
+            float btn_w = 120;
+            ImGui::SetCursorPosX((cw - btn_w) * 0.5f + ImGui::GetStyle().WindowPadding.x);
+            if (ImGui::Button("Got it!", ImVec2(btn_w, 0))) {
+                show_tutorial = false;
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::Dummy(ImVec2(0, 4));
+            ImGui::EndPopup();
+        }
+
+        if (show_settings) {
+            ImGui::OpenPopup("##settings_popup");
+            show_settings = false;
+        }
+
+        ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+        ImGui::SetNextWindowSize(ImVec2(380, 0), ImGuiCond_Always);
+        if (ImGui::BeginPopupModal("##settings_popup", nullptr,
+                ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize)) {
+
+            ImGui::Dummy(ImVec2(0, 4));
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.95f, 0.95f, 0.95f, 1.0f));
+            float cw2 = ImGui::GetContentRegionAvail().x;
+            ImVec2 stitle = ImGui::CalcTextSize("Settings");
+            ImGui::SetCursorPosX((cw2 - stitle.x) * 0.5f + ImGui::GetStyle().WindowPadding.x);
+            ImGui::Text("Settings");
+            ImGui::PopStyleColor();
+            ImGui::Dummy(ImVec2(0, 6));
+
+            ImGui::Separator();
+            ImGui::Dummy(ImVec2(0, 6));
+
+            ImGui::TextDisabled("Appearance");
+            ImGui::Dummy(ImVec2(0, 4));
+
+            ImGui::Text("Theme");
+            ImGui::SameLine();
+            ImGui::SetNextItemWidth(160);
+            ImGui::Combo("##s_theme", &maniac::config.theme_index, "Cherry\0Moonlight\0OG\0\0");
+
+            if (maniac::config.theme_index != 2) {
+                ImGui::Dummy(ImVec2(0, 4));
+                ImGui::Text("Accent");
+                ImGui::SameLine();
+                color_swatch("##s_pink",   1.0f,  0.40f, 0.70f, maniac::config.accent_color); ImGui::SameLine();
+                color_swatch("##s_blue",   0.40f, 0.60f, 1.0f,  maniac::config.accent_color); ImGui::SameLine();
+                color_swatch("##s_green",  0.30f, 0.90f, 0.55f, maniac::config.accent_color); ImGui::SameLine();
+                color_swatch("##s_purple", 0.70f, 0.40f, 1.0f,  maniac::config.accent_color); ImGui::SameLine();
+                color_swatch("##s_orange", 1.0f,  0.55f, 0.20f, maniac::config.accent_color); ImGui::SameLine();
+                ImGui::ColorEdit3("##s_accent_custom", maniac::config.accent_color,
+                    ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
+                ImGui::SameLine();
+                ImGui::TextDisabled("custom");
+            }
+
+            ImGui::Dummy(ImVec2(0, 8));
+            ImGui::Separator();
+            ImGui::Dummy(ImVec2(0, 6));
+
+            ImGui::TextDisabled("Help");
+            ImGui::Dummy(ImVec2(0, 4));
+            if (ImGui::Button("Tutorial", ImVec2(100, 0))) {
+                show_tutorial = true;
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::SameLine();
+            ImGui::TextDisabled("Show the getting started guide.");
+
+            ImGui::Dummy(ImVec2(0, 10));
+
+            float close_w = 100;
+            ImGui::SetCursorPosX((cw2 - close_w) * 0.5f + ImGui::GetStyle().WindowPadding.x);
+            if (ImGui::Button("Close", ImVec2(close_w, 0)))
+                ImGui::CloseCurrentPopup();
+
+            ImGui::Dummy(ImVec2(0, 4));
+            ImGui::EndPopup();
+        }
 
         ImGui::Dummy(ImVec2(0, 2));
         ImVec4 status_col = (message == "playing")
@@ -244,35 +369,43 @@ int main(int, char**) {
         ImGui::PushStyleColor(ImGuiCol_Text, status_col);
         ImGui::Text("  %s", message.c_str());
         ImGui::PopStyleColor();
-        ImGui::Dummy(ImVec2(0, 2));
 
-        section_gap();
-
-        if (ImGui::CollapsingHeader("Appearance", ImGuiTreeNodeFlags_DefaultOpen)) {
-            ImGui::Dummy(ImVec2(0, 3));
-
-            ImGui::Text("Theme");
-            ImGui::SameLine();
-            ImGui::SetNextItemWidth(180);
-            ImGui::Combo("##theme", &maniac::config.theme_index, "Cherry\0Moonlight\0OG\0\0");
-
-            if (!og_theme) {
-                ImGui::Dummy(ImVec2(0, 4));
-                ImGui::Text("Accent");
-                ImGui::SameLine();
-                color_swatch("##pink",   1.0f,  0.40f, 0.70f, maniac::config.accent_color); ImGui::SameLine();
-                color_swatch("##blue",   0.40f, 0.60f, 1.0f,  maniac::config.accent_color); ImGui::SameLine();
-                color_swatch("##green",  0.30f, 0.90f, 0.55f, maniac::config.accent_color); ImGui::SameLine();
-                color_swatch("##purple", 0.70f, 0.40f, 1.0f,  maniac::config.accent_color); ImGui::SameLine();
-                color_swatch("##orange", 1.0f,  0.55f, 0.20f, maniac::config.accent_color); ImGui::SameLine();
-                ImGui::ColorEdit3("##accent_custom", maniac::config.accent_color,
-                    ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
-                ImGui::SameLine();
-                ImGui::TextDisabled("custom");
-            }
-
-            ImGui::Dummy(ImVec2(0, 3));
+        float avail = ImGui::GetContentRegionAvail().x;
+        float btn_sz = ImGui::GetFrameHeight();
+        ImGui::SameLine(avail - btn_sz + ImGui::GetStyle().WindowPadding.x);
+        ImGui::SetCursorPosY(ImGui::GetCursorPosY() - ImGui::GetTextLineHeightWithSpacing() + 2);
+        if (ImGui::Button("##gear", ImVec2(btn_sz, btn_sz))) {
+            show_settings = true;
         }
+        {
+            ImDrawList* dl = ImGui::GetWindowDrawList();
+            ImVec2 bp      = ImGui::GetItemRectMin();
+            ImVec2 sz      = ImGui::GetItemRectSize();
+            ImVec2 tc      = ImVec2(bp.x + sz.x * 0.5f, bp.y + sz.y * 0.5f);
+            float r        = sz.x * 0.28f;
+            float ri       = r * 0.55f;
+            int teeth      = 6;
+            float tooth_h  = r * 0.35f;
+            ImU32 col      = IM_COL32(210, 210, 210, 230);
+            for (int i = 0; i < teeth; i++) {
+                float a0 = ((float)i / teeth) * 6.2832f;
+                float a1 = a0 + 0.38f;
+                float a2 = a1 + 0.25f;
+                float a3 = a2 + 0.38f;
+                auto pt = [&](float ang, float rad) {
+                    return ImVec2(tc.x + cosf(ang) * rad, tc.y + sinf(ang) * rad);
+                };
+                dl->AddQuadFilled(pt(a0, r), pt(a1, r + tooth_h), pt(a2, r + tooth_h), pt(a3, r), col);
+            }
+            dl->AddCircleFilled(tc, r,        col,      32);
+            dl->AddCircleFilled(tc, ri, IM_COL32(0,0,0,0), 32);
+            ImVec4 bg4 = ImGui::GetStyleColorVec4(ImGuiCol_Button);
+            ImU32 bg_col2 = ImGui::ColorConvertFloat4ToU32(bg4);
+            dl->AddCircleFilled(tc, ri, bg_col2, 32);
+        }
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("Settings");
+
+        ImGui::Dummy(ImVec2(0, 2));
 
         section_gap();
 
@@ -280,12 +413,18 @@ int main(int, char**) {
             ImGui::Dummy(ImVec2(0, 3));
 
             if (og_theme) {
-                ImGui::Combo("Humanization Type##og_htype", &maniac::config.humanization_type, "Static\0Dynamic (new)\0\0");
+                ImGui::Combo("Humanization Type##og_htype", &maniac::config.humanization_type, "Static\0Dynamic (new)\0UR Humanization\0\0");
                 ImGui::SameLine();
-                help_marker("Static: density per 1s chunk. Dynamic: density 1s ahead of each hit, applied individually.");
-                ImGui::InputInt("Humanization##og_hmod", &maniac::config.humanization_modifier, 1, 10);
-                ImGui::SameLine();
-                help_marker("Density-based hit-time offset.");
+                help_marker("Static: density per 1s chunk. Dynamic: density 1s ahead of each hit. UR: targets a specific Unstable Rate.");
+                if (maniac::config.humanization_type != maniac::config::UR_HUMANIZATION) {
+                    ImGui::InputInt("Humanization##og_hmod", &maniac::config.humanization_modifier, 1, 10);
+                    ImGui::SameLine();
+                    help_marker("Density-based hit-time offset.");
+                } else {
+                    ImGui::InputInt("Target UR##og_ur", &maniac::config.ur_target, 1, 10);
+                    ImGui::SameLine();
+                    help_marker("Target Unstable Rate (e.g. 120 = 12.0 UR). Offsets are drawn from a normal distribution sized to match this UR.");
+                }
                 ImGui::Dummy(ImVec2(0, 2));
                 ImGui::Text("Adds a random hit-time offset generated using a normal\ndistribution with given mean and standard deviation.");
                 ImGui::Dummy(ImVec2(0, 2));
@@ -293,16 +432,23 @@ int main(int, char**) {
                 ImGui::InputInt("Randomization Stddev##og_rstddev", &maniac::config.randomization_stddev);
             } else {
                 ImGui::SetNextItemWidth(180);
-                ImGui::Combo("Type##htype", &maniac::config.humanization_type, "Static\0Dynamic\0\0");
+                ImGui::Combo("Type##htype", &maniac::config.humanization_type, "Static\0Dynamic\0UR\0\0");
                 ImGui::SameLine();
-                help_marker("Static: density per 1s chunk. Dynamic: density 1s ahead of each hit, applied individually.");
+                help_marker("Static: density per 1s chunk. Dynamic: density 1s ahead of each hit. UR: targets a specific Unstable Rate.");
 
                 ImGui::Dummy(ImVec2(0, 2));
 
-                ImGui::SetNextItemWidth(180);
-                animated_slider_int("Modifier##hmod", &maniac::config.humanization_modifier, 0, 500, anim_hmod);
-                ImGui::SameLine();
-                help_marker("Density-based hit-time offset. Higher = more human variation.");
+                if (maniac::config.humanization_type == maniac::config::UR_HUMANIZATION) {
+                    ImGui::SetNextItemWidth(180);
+                    animated_slider_int("Target UR##ur", &maniac::config.ur_target, 10, 500, anim_ur);
+                    ImGui::SameLine();
+                    help_marker("Target Unstable Rate x10 (e.g. 120 = 12.0 UR). Offsets are normally distributed to match this UR. Lower = more precise, higher = more human.");
+                } else {
+                    ImGui::SetNextItemWidth(180);
+                    animated_slider_int("Modifier##hmod", &maniac::config.humanization_modifier, 0, 500, anim_hmod);
+                    ImGui::SameLine();
+                    help_marker("Density-based hit-time offset. Higher = more human variation.");
+                }
 
                 ImGui::Dummy(ImVec2(0, 4));
                 ImGui::TextDisabled("Gaussian randomization");
