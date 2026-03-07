@@ -8,13 +8,58 @@
 #include <imgui/backends/imgui_impl_win32.h>
 #include <random>
 #include <algorithm>
+#include <shellapi.h>
 
 #include <maniac/common.h>
 #include <maniac/maniac.h>
 
+#define WM_TRAY_ICON     (WM_USER + 1)
+#define IDI_TRAY_ICON    1
+#define ID_TRAY_OPEN     1001
+#define ID_TRAY_CLOSE    1002
+
 static LPDIRECT3D9           g_pD3D       = NULL;
 static LPDIRECT3DDEVICE9     g_pd3dDevice = NULL;
 static D3DPRESENT_PARAMETERS g_d3dpp      = {};
+
+static NOTIFYICONDATA        g_nid        = {};
+static bool                  g_in_tray    = false;
+static bool                  g_tray_first_hide = true;
+
+static bool                  g_show_tray_popup      = false;
+static bool                  g_show_detach_popup    = false;
+static bool                  g_request_quit         = false;
+
+static void tray_add(HWND hwnd) {
+    g_nid.cbSize           = sizeof(NOTIFYICONDATA);
+    g_nid.hWnd             = hwnd;
+    g_nid.uID              = IDI_TRAY_ICON;
+    g_nid.uFlags           = NIF_ICON | NIF_MESSAGE | NIF_TIP;
+    g_nid.uCallbackMessage = WM_TRAY_ICON;
+    g_nid.hIcon            = (HICON)LoadImage(GetModuleHandle(NULL),
+                                 MAKEINTRESOURCE(IDI_TRAY_ICON),
+                                 IMAGE_ICON, 16, 16, LR_DEFAULTCOLOR);
+    if (!g_nid.hIcon)
+        g_nid.hIcon = LoadIcon(NULL, IDI_APPLICATION);
+    lstrcpy(g_nid.szTip, _T("maniac-next"));
+    Shell_NotifyIcon(NIM_ADD, &g_nid);
+}
+
+static void tray_remove() {
+    Shell_NotifyIcon(NIM_DELETE, &g_nid);
+}
+
+static void tray_show_context_menu(HWND hwnd) {
+    POINT pt;
+    GetCursorPos(&pt);
+    HMENU menu = CreatePopupMenu();
+    AppendMenu(menu, MF_STRING, ID_TRAY_OPEN,  _T("Open"));
+    AppendMenu(menu, MF_SEPARATOR, 0, NULL);
+    AppendMenu(menu, MF_STRING, ID_TRAY_CLOSE, _T("Close"));
+    SetForegroundWindow(hwnd);
+    TrackPopupMenu(menu, TPM_BOTTOMALIGN | TPM_LEFTALIGN, pt.x, pt.y, 0, hwnd, NULL);
+    DestroyMenu(menu);
+}
 
 bool CreateDeviceD3D(HWND hWnd) {
     if ((g_pD3D = Direct3DCreate9(D3D_SDK_VERSION)) == NULL)
@@ -61,6 +106,36 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         case WM_SYSCOMMAND:
             if ((wParam & 0xfff0) == SC_KEYMENU) return 0;
             break;
+        case WM_CLOSE:
+            ::ShowWindow(hWnd, SW_HIDE);
+            g_in_tray = true;
+            if (g_tray_first_hide) {
+                g_tray_first_hide = false;
+                g_show_tray_popup = true;
+            }
+            return 0;
+        case WM_TRAY_ICON:
+            if (lParam == WM_RBUTTONUP) {
+                tray_show_context_menu(hWnd);
+            } else if (lParam == WM_LBUTTONDBLCLK) {
+                ::ShowWindow(hWnd, SW_SHOW);
+                ::SetForegroundWindow(hWnd);
+                g_in_tray = false;
+            }
+            return 0;
+        case WM_COMMAND:
+            if (LOWORD(wParam) == ID_TRAY_OPEN) {
+                ::ShowWindow(hWnd, SW_SHOW);
+                ::SetForegroundWindow(hWnd);
+                g_in_tray = false;
+            } else if (LOWORD(wParam) == ID_TRAY_CLOSE) {
+                if (maniac::osu != nullptr) {
+                    g_show_detach_popup = true;
+                } else {
+                    g_request_quit = true;
+                }
+            }
+            return 0;
         case WM_DESTROY:
             ::PostQuitMessage(0);
             return 0;
@@ -267,7 +342,7 @@ void apply(int theme_index, float* accent) {
     }
 }
 
-} // namespace theme
+}
 
 void window::start(const std::function<void()>& body) {
     ImGui_ImplWin32_EnableDpiAwareness();
@@ -293,6 +368,8 @@ void window::start(const std::function<void()>& body) {
     ::ShowWindow(hwnd, SW_SHOWDEFAULT);
     ::UpdateWindow(hwnd);
 
+    tray_add(hwnd);
+
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
@@ -315,6 +392,11 @@ void window::start(const std::function<void()>& body) {
 
     bool done = false;
     while (!done) {
+        if (g_request_quit) {
+            done = true;
+            break;
+        }
+
         MSG msg;
         while (::PeekMessage(&msg, NULL, 0U, 0U, PM_REMOVE)) {
             ::TranslateMessage(&msg);
@@ -322,6 +404,11 @@ void window::start(const std::function<void()>& body) {
             if (msg.message == WM_QUIT) done = true;
         }
         if (done) break;
+
+        if (g_in_tray) {
+            Sleep(50);
+            continue;
+        }
 
         float* acc = maniac::config.accent_color;
         bool accent_changed = (acc[0] != last_acc[0] || acc[1] != last_acc[1] || acc[2] != last_acc[2]);
@@ -350,6 +437,56 @@ void window::start(const std::function<void()>& body) {
         maniac::config.tap_time              = max(0, maniac::config.tap_time);
         maniac::config.humanization_modifier = max(0, maniac::config.humanization_modifier);
 
+        ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+
+        if (g_show_tray_popup) {
+            ImGui::OpenPopup("##tray_notice");
+            g_show_tray_popup = false;
+        }
+        ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+        ImGui::SetNextWindowSize(ImVec2(300, 0), ImGuiCond_Always);
+        if (ImGui::BeginPopupModal("##tray_notice", nullptr,
+                ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize)) {
+            ImGui::Dummy(ImVec2(0, 4));
+            ImGui::SetCursorPosX((ImGui::GetContentRegionAvail().x - ImGui::CalcTextSize("Maniac will be in the tray.").x) * 0.5f + ImGui::GetStyle().WindowPadding.x);
+            ImGui::Text("Maniac will be in the tray.");
+            ImGui::Dummy(ImVec2(0, 8));
+            float bw = 80;
+            ImGui::SetCursorPosX((ImGui::GetContentRegionAvail().x - bw) * 0.5f + ImGui::GetStyle().WindowPadding.x);
+            if (ImGui::Button("OK", ImVec2(bw, 0)))
+                ImGui::CloseCurrentPopup();
+            ImGui::Dummy(ImVec2(0, 4));
+            ImGui::EndPopup();
+        }
+
+        if (g_show_detach_popup) {
+            ImGui::OpenPopup("##detach_confirm");
+            g_show_detach_popup = false;
+        }
+        ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+        ImGui::SetNextWindowSize(ImVec2(340, 0), ImGuiCond_Always);
+        if (ImGui::BeginPopupModal("##detach_confirm", nullptr,
+                ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize)) {
+            ImGui::Dummy(ImVec2(0, 4));
+            ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + 320);
+            ImGui::TextUnformatted("Maniac is attached to osu!, do you want to detach?");
+            ImGui::PopTextWrapPos();
+            ImGui::Dummy(ImVec2(0, 8));
+            float bw2 = 100;
+            float spacing = 8;
+            float total = bw2 * 2 + spacing;
+            ImGui::SetCursorPosX((ImGui::GetContentRegionAvail().x - total) * 0.5f + ImGui::GetStyle().WindowPadding.x);
+            if (ImGui::Button("Detach & Close", ImVec2(bw2, 0))) {
+                ImGui::CloseCurrentPopup();
+                g_request_quit = true;
+            }
+            ImGui::SameLine(0, spacing);
+            if (ImGui::Button("Cancel", ImVec2(bw2, 0)))
+                ImGui::CloseCurrentPopup();
+            ImGui::Dummy(ImVec2(0, 4));
+            ImGui::EndPopup();
+        }
+
         ImGui::EndFrame();
 
         g_pd3dDevice->SetRenderState(D3DRS_ZENABLE,           FALSE);
@@ -371,6 +508,7 @@ void window::start(const std::function<void()>& body) {
             ResetDevice();
     }
 
+    tray_remove();
     ImGui_ImplDX9_Shutdown();
     ImGui_ImplWin32_Shutdown();
     ImGui::DestroyContext();
