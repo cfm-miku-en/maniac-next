@@ -12,6 +12,7 @@ namespace maniac {
         static constexpr auto STATIC_HUMANIZATION = 0;
         static constexpr auto DYNAMIC_HUMANIZATION = 1;
         static constexpr auto UR_HUMANIZATION = 2;
+        static constexpr auto UR_STATIC_HUMANIZATION = 3;
 
         int tap_time = 20;
         bool mirror_mod = false;
