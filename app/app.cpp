@@ -211,6 +211,8 @@ int main(int, char**) {
             maniac::humanize_dynamic(hit_objects, maniac::config.humanization_modifier);
         if (maniac::config.humanization_type == maniac::config::UR_HUMANIZATION)
             maniac::humanize_ur(hit_objects, maniac::config.ur_target);
+        if (maniac::config.humanization_type == maniac::config::UR_STATIC_HUMANIZATION)
+            maniac::humanize_ur_static(hit_objects, maniac::config.ur_target);
 
         auto actions = maniac::to_actions(hit_objects, osu.get_game_time());
         message = "playing";
@@ -413,10 +415,11 @@ int main(int, char**) {
             ImGui::Dummy(ImVec2(0, 3));
 
             if (og_theme) {
-                ImGui::Combo("Humanization Type##og_htype", &maniac::config.humanization_type, "Static\0Dynamic (new)\0UR Humanization\0\0");
+                ImGui::Combo("Humanization Type##og_htype", &maniac::config.humanization_type, "Static\0Dynamic (new)\0UR (Varies)\0UR (Static)\0\0");
                 ImGui::SameLine();
                 help_marker("Static: density per 1s chunk. Dynamic: density 1s ahead of each hit. UR: targets a specific Unstable Rate.");
-                if (maniac::config.humanization_type != maniac::config::UR_HUMANIZATION) {
+                if (maniac::config.humanization_type != maniac::config::UR_HUMANIZATION &&
+                    maniac::config.humanization_type != maniac::config::UR_STATIC_HUMANIZATION) {
                     ImGui::InputInt("Humanization##og_hmod", &maniac::config.humanization_modifier, 1, 10);
                     ImGui::SameLine();
                     help_marker("Density-based hit-time offset.");
@@ -432,17 +435,19 @@ int main(int, char**) {
                 ImGui::InputInt("Randomization Stddev##og_rstddev", &maniac::config.randomization_stddev);
             } else {
                 ImGui::SetNextItemWidth(180);
-                ImGui::Combo("Type##htype", &maniac::config.humanization_type, "Static\0Dynamic\0UR\0\0");
+                ImGui::Combo("Type##htype", &maniac::config.humanization_type, "Static\0Dynamic\0UR (Varies)\0UR (Static)\0\0");
                 ImGui::SameLine();
-                help_marker("Static: density per 1s chunk. Dynamic: density 1s ahead of each hit. UR: targets a specific Unstable Rate.");
+                help_marker("Static: density per 1s chunk. Dynamic: density 1s ahead of each hit. UR Varies: targets a UR with random variance each run. UR Static: same offsets every run on the same map.");
 
                 ImGui::Dummy(ImVec2(0, 2));
 
-                if (maniac::config.humanization_type == maniac::config::UR_HUMANIZATION) {
+                bool is_ur_mode = (maniac::config.humanization_type == maniac::config::UR_HUMANIZATION ||
+                                   maniac::config.humanization_type == maniac::config::UR_STATIC_HUMANIZATION);
+                if (is_ur_mode) {
                     ImGui::SetNextItemWidth(180);
                     animated_slider_int("Target UR##ur", &maniac::config.ur_target, 10, 500, anim_ur);
                     ImGui::SameLine();
-                    help_marker("Target Unstable Rate x10 (e.g. 120 = 12.0 UR). Offsets are normally distributed to match this UR. Lower = more precise, higher = more human.");
+                    help_marker("Target UR x10 (e.g. 72 = 7.2 UR). Varies: random each run. Static: same offsets every run on the same map.");
                 } else {
                     ImGui::SetNextItemWidth(180);
                     animated_slider_int("Modifier##hmod", &maniac::config.humanization_modifier, 0, 500, anim_hmod);
