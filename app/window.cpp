@@ -1,6 +1,5 @@
 #include "window.h"
 #include "font.h"
-#include "config.h"
 
 #include <d3d9.h>
 #include <tchar.h>
@@ -352,7 +351,7 @@ void apply(int theme_index, float* accent) {
 
 }
 
-void window::start(const std::function<void()>& body) {
+void window::start(const std::function<void()>& body, const std::function<void()>& save_config) {
     ImGui_ImplWin32_EnableDpiAwareness();
 
     WNDCLASSEX wc = {
@@ -466,7 +465,7 @@ void window::start(const std::function<void()>& body) {
             ImGui::SetCursorPosX((280 - bw) * 0.5f + ImGui::GetStyle().WindowPadding.x);
             if (ImGui::Button("OK", ImVec2(bw, 0))) {
                 maniac::config.show_tray_notice = false;
-                config::write_to_file(maniac::config);
+                save_config();
                 ImGui::CloseCurrentPopup();
                 ::ShowWindow(hwnd, SW_HIDE);
                 g_in_tray = true;
