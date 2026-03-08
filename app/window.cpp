@@ -1,5 +1,6 @@
 #include "window.h"
 #include "font.h"
+#include "config.h"
 
 #include <d3d9.h>
 #include <tchar.h>
@@ -25,7 +26,6 @@ static D3DPRESENT_PARAMETERS g_d3dpp      = {};
 
 static NOTIFYICONDATA        g_nid        = {};
 static bool                  g_in_tray    = false;
-static bool                  g_tray_first_hide = true;
 
 static bool                  g_show_detach_popup    = false;
 static bool                  g_show_tray_notice     = false;
@@ -111,7 +111,7 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             if ((wParam & 0xfff0) == SC_KEYMENU) return 0;
             break;
         case WM_CLOSE:
-            if (g_tray_first_hide) {
+            if (maniac::config.show_tray_notice) {
                 g_show_detach_popup = false;
                 g_show_tray_notice = true;
             } else {
@@ -465,7 +465,8 @@ void window::start(const std::function<void()>& body) {
             float bw = 80;
             ImGui::SetCursorPosX((280 - bw) * 0.5f + ImGui::GetStyle().WindowPadding.x);
             if (ImGui::Button("OK", ImVec2(bw, 0))) {
-                g_tray_first_hide = false;
+                maniac::config.show_tray_notice = false;
+                config::write_to_file(maniac::config);
                 ImGui::CloseCurrentPopup();
                 ::ShowWindow(hwnd, SW_HIDE);
                 g_in_tray = true;
