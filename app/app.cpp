@@ -250,6 +250,7 @@ int main(int, char**) {
         if (maniac::config.show_tutorial) {
             show_tutorial = true;
             maniac::config.show_tutorial = false;
+            config::write_to_file(maniac::config);
         }
     }
 
