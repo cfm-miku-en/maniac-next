@@ -349,7 +349,7 @@ void apply(int theme_index, float* accent) {
     }
 }
 
-}
+} 
 
 void window::start(const std::function<void()>& body, const std::function<void()>& save_config) {
     ImGui_ImplWin32_EnableDpiAwareness();
@@ -530,4 +530,6 @@ void window::start(const std::function<void()>& body, const std::function<void()
     CleanupDeviceD3D();
     ::DestroyWindow(hwnd);
     ::UnregisterClass(wc.lpszClassName, wc.hInstance);
+    save_config();
+    TerminateProcess(GetCurrentProcess(), 0);
 }
