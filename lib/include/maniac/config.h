@@ -23,6 +23,7 @@ namespace maniac {
         int humanization_type = DYNAMIC_HUMANIZATION;
 
         int ur_target = 120;
+        int ur_target_max = 150;
 
         bool show_tutorial = true;
 
