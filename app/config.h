@@ -31,6 +31,9 @@ void config::read_from_file(struct maniac::config &c) {
         if (data.contains("ur_target")) {
             c.ur_target = data["ur_target"];
         }
+        if (data.contains("ur_target_max")) {
+            c.ur_target_max = data["ur_target_max"];
+        }
         if (data.contains("show_tutorial")) {
             c.show_tutorial = data["show_tutorial"];
         }
@@ -70,6 +73,7 @@ void config::write_to_file(struct maniac::config &c) {
             {"humanization_type", c.humanization_type},
             {"humanization_modifier", c.humanization_modifier},
             {"ur_target", c.ur_target},
+            {"ur_target_max", c.ur_target_max},
             {"show_tutorial", c.show_tutorial},
             {"keys", c.keys},
             {"theme_index", c.theme_index},
