@@ -28,6 +28,7 @@ static bool                  g_in_tray    = false;
 static bool                  g_tray_first_hide = true;
 
 static bool                  g_show_detach_popup    = false;
+static bool                  g_show_tray_notice     = false;
 static bool                  g_request_quit         = false;
 
 static void tray_add(HWND hwnd) {
@@ -37,9 +38,13 @@ static void tray_add(HWND hwnd) {
     g_nid.uID              = 1;
     g_nid.uFlags           = NIF_ICON | NIF_MESSAGE | NIF_TIP;
     g_nid.uCallbackMessage = WM_TRAY_ICON;
-    g_nid.hIcon            = LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(1));
-    if (!g_nid.hIcon)
-        g_nid.hIcon = LoadIcon(NULL, IDI_APPLICATION);
+
+    TCHAR exePath[MAX_PATH];
+    GetModuleFileName(NULL, exePath, MAX_PATH);
+    HICON hLarge = NULL, hSmall = NULL;
+    ExtractIconEx(exePath, 0, &hLarge, &hSmall, 1);
+    g_nid.hIcon = hSmall ? hSmall : (hLarge ? hLarge : LoadIcon(NULL, IDI_APPLICATION));
+
     lstrcpy(g_nid.szTip, _T("maniac-next"));
     Shell_NotifyIcon(NIM_ADD, &g_nid);
 }
@@ -106,17 +111,12 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             if ((wParam & 0xfff0) == SC_KEYMENU) return 0;
             break;
         case WM_CLOSE:
-            ::ShowWindow(hWnd, SW_HIDE);
-            g_in_tray = true;
             if (g_tray_first_hide) {
-                g_tray_first_hide = false;
-                g_nid.uFlags |= NIF_INFO;
-                lstrcpy(g_nid.szInfoTitle, _T("maniac-next"));
-                lstrcpy(g_nid.szInfo, _T("Maniac will be in the tray."));
-                g_nid.dwInfoFlags = NIIF_INFO;
-                g_nid.uTimeout    = 3000;
-                Shell_NotifyIcon(NIM_MODIFY, &g_nid);
-                g_nid.uFlags &= ~NIF_INFO;
+                g_show_detach_popup = false;
+                g_show_tray_notice = true;
+            } else {
+                ::ShowWindow(hWnd, SW_HIDE);
+                g_in_tray = true;
             }
             return 0;
         case WM_TRAY_ICON:
@@ -448,23 +448,49 @@ void window::start(const std::function<void()>& body) {
 
         ImVec2 center = ImGui::GetMainViewport()->GetCenter();
 
+        if (g_show_tray_notice) {
+            ImGui::OpenPopup("##tray_notice");
+            g_show_tray_notice = false;
+        }
+        ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+        ImGui::SetNextWindowSize(ImVec2(300, 0), ImGuiCond_Always);
+        if (ImGui::BeginPopupModal("##tray_notice", nullptr,
+                ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize)) {
+            ImGui::Dummy(ImVec2(0, 6));
+            ImGui::SetNextItemWidth(-1);
+            float tw = ImGui::CalcTextSize("Maniac will be in the tray.").x;
+            ImGui::SetCursorPosX((280 - tw) * 0.5f + ImGui::GetStyle().WindowPadding.x);
+            ImGui::TextUnformatted("Maniac will be in the tray.");
+            ImGui::Dummy(ImVec2(0, 10));
+            float bw = 80;
+            ImGui::SetCursorPosX((280 - bw) * 0.5f + ImGui::GetStyle().WindowPadding.x);
+            if (ImGui::Button("OK", ImVec2(bw, 0))) {
+                g_tray_first_hide = false;
+                ImGui::CloseCurrentPopup();
+                ::ShowWindow(hwnd, SW_HIDE);
+                g_in_tray = true;
+            }
+            ImGui::Dummy(ImVec2(0, 6));
+            ImGui::EndPopup();
+        }
+
         if (g_show_detach_popup) {
             ImGui::OpenPopup("##detach_confirm");
             g_show_detach_popup = false;
         }
         ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-        ImGui::SetNextWindowSize(ImVec2(340, 0), ImGuiCond_Always);
+        ImGui::SetNextWindowSize(ImVec2(360, 0), ImGuiCond_Always);
         if (ImGui::BeginPopupModal("##detach_confirm", nullptr,
                 ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize)) {
-            ImGui::Dummy(ImVec2(0, 4));
-            ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + 320);
+            ImGui::Dummy(ImVec2(0, 6));
+            ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + 340);
             ImGui::TextUnformatted("Maniac is attached to osu!, do you want to detach?");
             ImGui::PopTextWrapPos();
-            ImGui::Dummy(ImVec2(0, 8));
-            float bw2 = 100;
+            ImGui::Dummy(ImVec2(0, 10));
+            float bw2 = 120;
             float spacing = 8;
             float total = bw2 * 2 + spacing;
-            ImGui::SetCursorPosX((ImGui::GetContentRegionAvail().x - total) * 0.5f + ImGui::GetStyle().WindowPadding.x);
+            ImGui::SetCursorPosX((340 - total) * 0.5f + ImGui::GetStyle().WindowPadding.x);
             if (ImGui::Button("Detach & Close", ImVec2(bw2, 0))) {
                 ImGui::CloseCurrentPopup();
                 g_request_quit = true;
@@ -472,7 +498,7 @@ void window::start(const std::function<void()>& body) {
             ImGui::SameLine(0, spacing);
             if (ImGui::Button("Cancel", ImVec2(bw2, 0)))
                 ImGui::CloseCurrentPopup();
-            ImGui::Dummy(ImVec2(0, 4));
+            ImGui::Dummy(ImVec2(0, 6));
             ImGui::EndPopup();
         }
 
