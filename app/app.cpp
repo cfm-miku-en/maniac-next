@@ -532,6 +532,8 @@ int main(int, char**) {
         ImGui::TextDisabled("maniac-next by miku (original by fs-c)");
 
         ImGui::End();
+    }, [] {
+        config::write_to_file(maniac::config);
     });
 
     config::write_to_file(maniac::config);
