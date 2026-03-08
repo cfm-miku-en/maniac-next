@@ -26,6 +26,7 @@ namespace maniac {
         int ur_target_max = 150;
 
         bool show_tutorial = true;
+        bool show_tray_notice = true;
 
         std::string keys = "asdfjkl;";
 
