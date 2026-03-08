@@ -103,14 +103,19 @@ void maniac::humanize_dynamic(std::vector<osu::HitObject> &hit_objects, int modi
     debug("dynamically humanized %d hit objects with modifier %d", hit_objects.size(), modifier);
 }
 
-void maniac::humanize_ur(std::vector<osu::HitObject> &hit_objects, int ur_target_x10) {
-    if (hit_objects.empty() || ur_target_x10 <= 0)
+void maniac::humanize_ur(std::vector<osu::HitObject> &hit_objects, int ur_min_x10, int ur_max_x10) {
+    if (hit_objects.empty() || ur_min_x10 <= 0)
         return;
 
-    const double target_stddev = static_cast<double>(ur_target_x10) / 10.0;
+    if (ur_max_x10 < ur_min_x10) ur_max_x10 = ur_min_x10;
 
     std::random_device rd;
     std::mt19937 gen(rd());
+    std::uniform_int_distribution<> range_distr(ur_min_x10, ur_max_x10);
+    int ur_target_x10 = range_distr(gen);
+
+    const double target_stddev = static_cast<double>(ur_target_x10) / 10.0;
+
     std::normal_distribution<> distr(0.0, 1.0);
 
     std::vector<double> offsets(hit_objects.size());
@@ -131,7 +136,8 @@ void maniac::humanize_ur(std::vector<osu::HitObject> &hit_objects, int ur_target
             hit_objects[i].end_time += static_cast<int>(std::round((distr(gen) - mean) * scale));
     }
 
-    debug("UR-humanized (varies) %d hit objects targeting UR %.1f", hit_objects.size(), ur_target_x10 / 10.0);
+    debug("UR-humanized (varies) %d hit objects, picked UR %.1f in range [%.1f, %.1f]",
+          hit_objects.size(), ur_target_x10 / 10.0, ur_min_x10 / 10.0, ur_max_x10 / 10.0);
 }
 
 void maniac::humanize_ur_static(std::vector<osu::HitObject> &hit_objects, int ur_target_x10) {
